@@ -1,0 +1,87 @@
+# Undercover — Bar Edition 🍻
+
+Une version maison du jeu **Undercover** où les mots à deviner sont **tirés en
+direct** (via l'API ConceptNet, en français) pour que **personne — même l'hôte —
+ne connaisse la liste**. Chacun joue sur son téléphone.
+
+- **Rôles** : Civil · Undercover · Mr White · **Kamikaze** (gagne s'il se fait
+  éliminer) · **La Taupe** (civil qui connaît un undercover et doit le protéger).
+- **Temps réel** : tous les téléphones se synchronisent (lobby, votes, révélations).
+- **Anti-triche** : chaque joueur ne voit que **son** mot (Row Level Security).
+- **100 % gratuit** : front sur Vercel, backend sur Supabase.
+
+## Pile technique
+
+| Couche        | Techno                                            |
+| ------------- | ------------------------------------------------- |
+| Front         | React 19 + Vite + TypeScript + Tailwind 4 (Vercel)|
+| Données       | Supabase Postgres + Row Level Security            |
+| Temps réel    | Supabase Realtime                                 |
+| Identité      | Supabase Auth anonyme (1 device = 1 identité)     |
+| Logique secrète | Edge Functions (Deno) : rôles + tirage des mots |
+| Mots          | ConceptNet (`api.conceptnet.io`, gratuit, FR)     |
+
+## Développement local
+
+```bash
+npm install
+cp .env.example .env   # puis remplis avec tes clés Supabase
+npm run dev
+```
+
+## Déploiement (de zéro)
+
+### 1. Projet Supabase
+1. Crée un projet sur [supabase.com](https://supabase.com) (plan gratuit).
+2. **SQL Editor** → colle le contenu de `supabase/migrations/0001_init.sql` → **Run**.
+3. **Authentication → Sign In / Providers → Anonymous** : active les connexions anonymes.
+4. Note dans **Project Settings → API** : l'`URL` et la clé `anon public`.
+
+### 2. Edge Functions
+Avec la [CLI Supabase](https://supabase.com/docs/guides/cli) :
+```bash
+supabase login
+supabase link --project-ref <ton-ref>
+supabase functions deploy start-round
+supabase functions deploy set-phase
+supabase functions deploy resolve-vote
+supabase functions deploy mrwhite-guess
+```
+> Les variables `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY`
+> sont **injectées automatiquement** dans les Edge Functions — rien à configurer.
+
+### 3. Front sur Vercel
+1. Pousse le repo sur GitHub (déjà fait).
+2. Sur [vercel.com](https://vercel.com) → **New Project** → importe le repo.
+3. **Environment Variables** :
+   - `VITE_SUPABASE_URL` = ton URL Supabase
+   - `VITE_SUPABASE_ANON_KEY` = ta clé anon
+4. Deploy. Le `vercel.json` gère le routage SPA (`/room/CODE`).
+
+## Règles du jeu (rappel)
+
+1. L'hôte crée une partie → un **code** à 5 lettres.
+2. Les potes rejoignent avec le code, sur leur téléphone.
+3. L'hôte règle les rôles puis **démarre** : chacun reçoit son mot secret.
+4. À tour de rôle (à l'oral), chacun donne **un indice** sur son mot.
+5. Tout le monde **vote** pour éliminer un joueur.
+6. Révélation, puis :
+   - **Kamikaze** éliminé → il gagne 😈
+   - **Mr White** éliminé → il tente de **deviner** le mot des civils
+   - sinon on vérifie les conditions de victoire, et on continue.
+7. Les **civils** gagnent quand tous les imposteurs sont éliminés ; les
+   **undercover** gagnent à parité numérique.
+
+## Structure
+
+```
+src/
+  pages/        Home (accueil), Room (orchestrateur)
+  components/   Lobby, Game (toutes les phases de jeu)
+  hooks/        useRoom (état + temps réel)
+  lib/          supabase, api, types, game (logique d'affichage)
+supabase/
+  migrations/   schéma SQL + RLS
+  functions/    start-round, set-phase, resolve-vote, mrwhite-guess
+    _shared/    roles, words (ConceptNet), outcome, auth, cors
+```

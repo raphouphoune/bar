@@ -1,0 +1,14 @@
+# Config minimale Supabase CLI. Le project_id est rempli au `supabase link`.
+project_id = "undercover-bar"
+
+[functions.start-round]
+verify_jwt = true
+
+[functions.set-phase]
+verify_jwt = true
+
+[functions.resolve-vote]
+verify_jwt = true
+
+[functions.mrwhite-guess]
+verify_jwt = true
