@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createRoom, joinRoom } from '../lib/api'
 
+type Mode = null | 'multi'
+
 export default function Home() {
   const navigate = useNavigate()
+  const [mode, setMode] = useState<Mode>(null)
   const [name, setName] = useState(localStorage.getItem('uc_name') ?? '')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
@@ -44,6 +47,47 @@ export default function Home() {
     }
   }
 
+  // Mode selection screen
+  if (mode === null) {
+    return (
+      <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 p-6">
+        <header className="text-center">
+          <h1 className="text-4xl font-black tracking-tight">
+            Under<span className="text-rose-400">cover</span>
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">Bar Edition 🍻 — mots tirés en direct</p>
+        </header>
+
+        <p className="text-center text-sm text-slate-300">Comment voulez-vous jouer ?</p>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => navigate('/local')}
+            className="flex flex-col items-center rounded-2xl bg-amber-500/20 px-6 py-5 ring-1 ring-amber-400/40 transition active:scale-[0.99]"
+          >
+            <span className="text-2xl">📱</span>
+            <span className="mt-1 text-lg font-bold text-amber-300">Un seul téléphone</span>
+            <span className="mt-1 text-center text-xs text-slate-400">
+              Le meneur gère la partie. Le téléphone tourne de joueur en joueur.
+            </span>
+          </button>
+
+          <button
+            onClick={() => setMode('multi')}
+            className="flex flex-col items-center rounded-2xl bg-slate-800/60 px-6 py-5 ring-1 ring-white/10 transition active:scale-[0.99]"
+          >
+            <span className="text-2xl">📲</span>
+            <span className="mt-1 text-lg font-bold">Chacun son téléphone</span>
+            <span className="mt-1 text-center text-xs text-slate-400">
+              Chaque joueur rejoint avec son propre appareil via un code.
+            </span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Multi-phone mode (existing flow)
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 p-6">
       <header className="text-center">
@@ -98,9 +142,12 @@ export default function Home() {
         {error && <p className="text-sm text-rose-400">{error}</p>}
       </div>
 
-      <p className="text-center text-xs text-slate-600">
-        Chacun sur son téléphone. Garde ton mot secret 🤫
-      </p>
+      <button
+        onClick={() => setMode(null)}
+        className="text-center text-xs text-slate-600 underline"
+      >
+        ← Changer de mode
+      </button>
     </div>
   )
 }
