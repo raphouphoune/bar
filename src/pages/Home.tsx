@@ -83,6 +83,13 @@ export default function Home() {
             </span>
           </button>
         </div>
+
+        <button
+          onClick={() => navigate('/roles')}
+          className="text-center text-sm text-slate-500 underline"
+        >
+          📖 Guide des rôles
+        </button>
       </div>
     )
   }

@@ -69,14 +69,34 @@ Deno.serve(async (req) => {
       .update({
         phase: 'reveal',
         eliminated_player_id: eliminatedId,
-        eliminated_role: eliminatedRole,
+        // Le Parrain est révélé comme "civil" pour tromper les joueurs
+        eliminated_role: eliminatedRole === 'parrain' ? 'civil' : eliminatedRole,
       })
       .eq('id', roundId)
 
     // Cas spéciaux
     if (eliminatedRole === 'kamikaze') {
-      await finishRound(admin, roundId, 'kamikaze')
-      return json({ ok: true, eliminatedId, role: eliminatedRole, winner: 'kamikaze' })
+      // Le Kamikaze ne gagne que s'il reste au moins un undercover (ou Mr White) en vie
+      const undercoverAlive = (players ?? [])
+        .filter((p) => p.id !== eliminatedId && p.is_alive)
+        .some((p) => {
+          const r = roleOf.get(p.id)
+          return r === 'undercover' || r === 'mr_white' || r === 'parrain'
+        })
+      if (undercoverAlive) {
+        await finishRound(admin, roundId, 'kamikaze')
+        return json({ ok: true, eliminatedId, role: eliminatedRole, winner: 'kamikaze' })
+      }
+      // Plus d'undercover en vie → kamikaze éliminé sans gagner, flux normal
+      const aliveRolesAfterKk: Role[] = (players ?? [])
+        .filter((p) => p.id !== eliminatedId && p.is_alive)
+        .map((p) => roleOf.get(p.id)!)
+      const winnerAfterKk = checkWinner(aliveRolesAfterKk)
+      if (winnerAfterKk) {
+        await finishRound(admin, roundId, winnerAfterKk)
+        return json({ ok: true, eliminatedId, role: eliminatedRole, winner: winnerAfterKk })
+      }
+      return json({ ok: true, eliminatedId, role: eliminatedRole, winner: null })
     }
     if (eliminatedRole === 'mr_white') {
       // Mr White a droit à sa tentative de devinette

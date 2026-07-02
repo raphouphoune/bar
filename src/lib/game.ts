@@ -39,4 +39,7 @@ export const ROLE_COLOR: Record<Role, string> = {
   mr_white: 'text-sky-300',
   kamikaze: 'text-amber-400',
   taupe: 'text-purple-400',
+  mercenaire: 'text-orange-400',
+  traitre: 'text-red-500',
+  parrain: 'text-fuchsia-400',
 }

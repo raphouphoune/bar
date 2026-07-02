@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       .eq('room_id', roomId)
 
     // 4. Rôles + mots
-    const { assignments, taupeKnows } = assignRoles(playerIds, settings)
+    const { assignments } = assignRoles(playerIds, settings)
     const { civil, undercover } = await generateWordPair()
     const firstPlayerId = pickFirstPlayer(assignments)
     const roundNumber = (room.current_round ?? 0) + 1
@@ -93,12 +93,12 @@ Deno.serve(async (req) => {
       player_id: a.playerId,
       role: a.role,
       word:
-        a.role === 'undercover'
+        a.role === 'undercover' || a.role === 'parrain'
           ? undercover
-          : a.role === 'civil' || a.role === 'taupe'
-            ? civil
-            : null,
-      knows_player_id: a.role === 'taupe' ? taupeKnows ?? null : null,
+          : a.role === 'mr_white'
+            ? null
+            : civil, // civil, taupe, kamikaze, traître, mercenaire reçoivent le mot civil
+      knows_player_id: a.knowsPlayerId ?? null,
     }))
     await admin.from('round_roles').insert(roleRows)
 

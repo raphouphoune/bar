@@ -1,4 +1,4 @@
-export type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe'
+export type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe' | 'mercenaire' | 'traitre' | 'parrain'
 
 export type RoomStatus = 'lobby' | 'playing' | 'finished'
 
@@ -17,6 +17,9 @@ export interface RoomSettings {
   enableMrWhite: boolean
   enableKamikaze: boolean
   enableTaupe: boolean
+  enableMercenaire: boolean
+  enableTraitre: boolean
+  enableParrain: boolean
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -24,6 +27,9 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   enableMrWhite: true,
   enableKamikaze: false,
   enableTaupe: false,
+  enableMercenaire: false,
+  enableTraitre: false,
+  enableParrain: false,
 }
 
 export interface Room {
@@ -75,7 +81,7 @@ export interface MyRole {
   player_id: string
   role: Role
   word: string | null
-  // Pour la Taupe : id du joueur Undercover qu'elle connaît.
+  // Taupe : id de l'undercover connu. Mercenaire : id de la cible.
   knows_player_id: string | null
 }
 
@@ -92,4 +98,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   mr_white: 'Mr White',
   kamikaze: 'Kamikaze',
   taupe: 'La Taupe',
+  mercenaire: 'Le Mercenaire',
+  traitre: 'Le Traître',
+  parrain: 'Le Parrain',
 }

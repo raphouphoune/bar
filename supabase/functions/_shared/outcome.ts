@@ -3,7 +3,7 @@ import type { Role } from './roles.ts'
 
 export type WinnerTeam = 'civils' | 'undercover' | 'mr_white' | 'kamikaze'
 
-const IMPOSTOR: Role[] = ['undercover', 'mr_white', 'kamikaze']
+const IMPOSTOR: Role[] = ['undercover', 'mr_white', 'kamikaze', 'parrain']
 
 /** Vérifie les conditions de victoire à partir des rôles ENCORE vivants. */
 export function checkWinner(aliveRoles: Role[]): WinnerTeam | null {
@@ -17,10 +17,13 @@ export function checkWinner(aliveRoles: Role[]): WinnerTeam | null {
 /** Points attribués à l'équipe gagnante (par rôle). */
 const POINTS: Record<Role, Partial<Record<WinnerTeam, number>>> = {
   civil: { civils: 1 },
-  taupe: { civils: 2 },
+  taupe: {}, // géré séparément
+  mercenaire: {}, // géré séparément
   undercover: { undercover: 2 },
   mr_white: { mr_white: 3 },
   kamikaze: { kamikaze: 3 },
+  parrain: { undercover: 2 },
+  traitre: { undercover: 2 },
 }
 
 /**
@@ -51,11 +54,33 @@ export async function finishRound(
   // Attribution des points
   const { data: roles } = await admin
     .from('round_roles')
-    .select('player_id, role')
+    .select('player_id, role, knows_player_id')
     .eq('round_id', roundId)
 
+  // État de vie actuel des joueurs (pour la Taupe)
+  const playerIds = (roles ?? []).map((r) => r.player_id)
+  const { data: alivePlayers } = await admin
+    .from('players')
+    .select('id, is_alive')
+    .in('id', playerIds)
+  const isAlive = new Map<string, boolean>(
+    (alivePlayers ?? []).map((p) => [p.id, p.is_alive]),
+  )
+
   for (const r of roles ?? []) {
-    const pts = POINTS[r.role as Role]?.[winner]
+    let pts: number
+    if (r.role === 'taupe') {
+      // Gagne avec undercovers si le joueur protégé est encore en vie
+      pts =
+        winner === 'undercover' && r.knows_player_id && isAlive.get(r.knows_player_id)
+          ? 2
+          : 0
+    } else if (r.role === 'mercenaire') {
+      // Gagne si sa cible (knows_player_id) a été éliminée
+      pts = r.knows_player_id && !isAlive.get(r.knows_player_id) ? 3 : 0
+    } else {
+      pts = POINTS[r.role as Role]?.[winner] ?? 0
+    }
     if (!pts) continue
     const { data: pl } = await admin
       .from('players')

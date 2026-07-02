@@ -75,7 +75,7 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
             <p className="text-sm text-sky-300">Tu es Mr White. Bluffe, puis devine le mot des civils.</p>
           )}
           {myRole.role === 'kamikaze' && (
-            <p className="text-sm text-amber-300">Tu es le Kamikaze : fais-toi éliminer pour gagner 😈</p>
+            <p className="text-sm text-amber-300">Tu es le Kamikaze : fais-toi éliminer tant qu'un undercover est encore en vie 😈</p>
           )}
         </div>
       )}

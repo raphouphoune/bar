@@ -79,8 +79,11 @@ export default function Lobby({ state }: { state: RoomState }) {
           onChange={(v) => patch({ undercoverCount: Math.max(1, v) })}
         />
         <Toggle label="Mr White" hint="sans mot, doit bluffer puis deviner" checked={s.enableMrWhite} disabled={!isHost} onChange={(v) => patch({ enableMrWhite: v })} />
-        <Toggle label="Kamikaze" hint="gagne s'il se fait éliminer" checked={s.enableKamikaze} disabled={!isHost} onChange={(v) => patch({ enableKamikaze: v })} />
-        <Toggle label="La Taupe" hint="civil qui connaît un undercover" checked={s.enableTaupe} disabled={!isHost} onChange={(v) => patch({ enableTaupe: v })} />
+        <Toggle label="Kamikaze" hint="gagne s'il se fait éliminer avant les undercovers" checked={s.enableKamikaze} disabled={!isHost} onChange={(v) => patch({ enableKamikaze: v })} />
+        <Toggle label="La Taupe" hint="civil qui connaît un undercover, gagne avec eux" checked={s.enableTaupe} disabled={!isHost} onChange={(v) => patch({ enableTaupe: v })} />
+        <Toggle label="Le Mercenaire" hint="civil neutre — gagne si sa cible secrète est éliminée" checked={s.enableMercenaire} disabled={!isHost} onChange={(v) => patch({ enableMercenaire: v })} />
+        <Toggle label="Le Traître" hint="civil qui gagne avec les undercovers (sans les connaître)" checked={s.enableTraitre} disabled={!isHost} onChange={(v) => patch({ enableTraitre: v })} />
+        <Toggle label="Le Parrain" hint="undercover révélé comme Civil à l'élimination" checked={s.enableParrain} disabled={!isHost} onChange={(v) => patch({ enableParrain: v })} />
         <p className="mt-2 text-xs text-slate-500">
           {impostorCount(s)} rôle(s) spécial(aux) · {Math.max(0, players.length - impostorCount(s))} civils
         </p>

@@ -1,17 +1,21 @@
 // Attribution des rôles, côté serveur (autoritaire et secret).
 
-export type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe'
+export type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe' | 'mercenaire' | 'traitre' | 'parrain'
 
 export interface Settings {
   undercoverCount: number
   enableMrWhite: boolean
   enableKamikaze: boolean
   enableTaupe: boolean
+  enableMercenaire: boolean
+  enableTraitre: boolean
+  enableParrain: boolean
 }
 
 export interface Assignment {
   playerId: string
   role: Role
+  knowsPlayerId?: string // taupe → id undercover connu ; mercenaire → id de la cible
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -25,13 +29,12 @@ function shuffle<T>(arr: T[]): T[] {
 
 /**
  * Distribue les rôles parmi les playerIds.
- * La Taupe est un civil "amélioré" : elle compte côté civils mais connaît
- * un undercover. On la prélève donc sur le quota de civils.
+ * knowsPlayerId dans Assignment : taupe → undercover connu ; mercenaire → cible.
  */
 export function assignRoles(
   playerIds: string[],
   s: Settings,
-): { assignments: Assignment[]; taupeKnows?: string } {
+): { assignments: Assignment[] } {
   const ids = shuffle(playerIds)
   const n = ids.length
 
@@ -51,24 +54,47 @@ export function assignRoles(
   for (let i = 0; i < kamikaze; i++) roles.push('kamikaze')
   while (roles.length < n) roles.push('civil')
 
-  const assignments: Assignment[] = ids.map((playerId, i) => ({
-    playerId,
-    role: roles[i],
-  }))
+  const assignments: Assignment[] = ids.map((playerId, i) => ({ playerId, role: roles[i] }))
 
-  // Taupe : transforme un civil en taupe s'il y a au moins un undercover.
-  let taupeKnows: string | undefined
+  // Taupe : transforme un civil (connaît un undercover)
   if (s.enableTaupe) {
     const civils = assignments.filter((a) => a.role === 'civil')
     const undercovers = assignments.filter((a) => a.role === 'undercover')
     if (civils.length >= 2 && undercovers.length >= 1) {
       const c = shuffle(civils)[0]
       c.role = 'taupe'
-      taupeKnows = shuffle(undercovers)[0].playerId
+      c.knowsPlayerId = shuffle(undercovers)[0].playerId
     }
   }
 
-  return { assignments, taupeKnows }
+  // Parrain : transforme un undercover (garde le mot undercover, révélé comme civil)
+  if (s.enableParrain) {
+    const undercovers = assignments.filter((a) => a.role === 'undercover')
+    if (undercovers.length >= 1) {
+      shuffle(undercovers)[0].role = 'parrain'
+    }
+  }
+
+  // Traître : transforme un civil (garde le mot civil, gagne avec undercovers)
+  if (s.enableTraitre) {
+    const civils = assignments.filter((a) => a.role === 'civil')
+    if (civils.length >= 2) {
+      shuffle(civils)[0].role = 'traitre'
+    }
+  }
+
+  // Mercenaire : transforme un civil (gagne si sa cible aléatoire est éliminée)
+  if (s.enableMercenaire) {
+    const civils = assignments.filter((a) => a.role === 'civil')
+    if (civils.length >= 1) {
+      const merc = shuffle(civils)[0]
+      merc.role = 'mercenaire'
+      const others = assignments.filter((a) => a.playerId !== merc.playerId)
+      merc.knowsPlayerId = shuffle(others)[0].playerId
+    }
+  }
+
+  return { assignments }
 }
 
 /** Premier joueur : tiré au sort parmi ceux qui ont un mot (jamais Mr White / Kamikaze). */
