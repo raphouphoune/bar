@@ -126,7 +126,6 @@ function VerbalCluePhase({ state }: { state: RoomState }) {
 function RemoteCluePhase({ state }: { state: RoomState }) {
   const { players, room, round, me, clues } = state
   const [myClue, setMyClue] = useState('')
-  const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
 
   if (!me || !round || !room) return null
@@ -145,7 +144,6 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
     setBusy(true)
     try {
       await submitClue(round.id, me!.id, myClue.trim())
-      setEditing(false)
     } finally {
       setBusy(false)
     }
@@ -191,40 +189,29 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
 
       {me.is_alive && (
         <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
-          {mySubmitted && !editing ? (
-            <div className="flex flex-col gap-1.5">
-              <p className="text-sm text-slate-300">
-                Ton indice : <span className="font-bold text-white">"{mySubmitted.clue_text}"</span>
-              </p>
-              <button
-                onClick={() => { setMyClue(mySubmitted.clue_text); setEditing(true) }}
-                className="text-left text-xs text-slate-500 underline"
-              >
-                Modifier
-              </button>
-            </div>
+          {mySubmitted ? (
+            <p className="text-sm text-slate-300">
+              Ton indice : <span className="font-bold text-white">"{mySubmitted.clue_text}"</span>
+              <span className="ml-2 text-xs text-emerald-400">✓ envoyé</span>
+            </p>
           ) : (
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-slate-400">
-                {editing ? 'Modifier ton indice' : 'Tape ton indice (un seul mot)'}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={myClue}
-                  onChange={(e) => setMyClue(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                  placeholder="Un mot…"
-                  maxLength={50}
-                  className="flex-1 rounded-xl bg-slate-900 px-4 py-2.5 text-lg outline-none ring-1 ring-white/10 focus:ring-rose-400"
-                />
-                <button
-                  disabled={busy || myClue.trim().length < 1}
-                  onClick={handleSubmit}
-                  className="rounded-xl bg-rose-500 px-4 py-2.5 font-bold disabled:opacity-40"
-                >
-                  {busy ? '…' : editing ? 'OK' : 'Envoyer'}
-                </button>
-              </div>
+              <label className="text-sm text-slate-400">Tape ton indice (un seul mot)</label>
+              <input
+                value={myClue}
+                onChange={(e) => setMyClue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+                placeholder="Un mot…"
+                maxLength={50}
+                className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-lg outline-none ring-1 ring-white/10 focus:ring-rose-400"
+              />
+              <button
+                disabled={busy || myClue.trim().length < 1}
+                onClick={handleSubmit}
+                className="w-full rounded-xl bg-rose-500 py-2.5 font-bold disabled:opacity-40"
+              >
+                {busy ? '…' : 'Envoyer'}
+              </button>
             </div>
           )}
         </div>
