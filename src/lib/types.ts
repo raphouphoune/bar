@@ -20,6 +20,7 @@ export interface RoomSettings {
   enableMercenaire: boolean
   enableTraitre: boolean
   enableParrain: boolean
+  remoteMode: boolean
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -30,6 +31,15 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   enableMercenaire: false,
   enableTraitre: false,
   enableParrain: false,
+  remoteMode: false,
+}
+
+export interface Clue {
+  id: string
+  round_id: string
+  player_id: string
+  clue_text: string
+  submitted_at: string
 }
 
 export interface Room {

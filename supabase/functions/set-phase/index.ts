@@ -22,8 +22,9 @@ Deno.serve(async (req) => {
     if ('error' in host) return json({ error: host.error }, host.status)
 
     if (phase === 'clue') {
-      // nouveau tour de discussion : on efface les votes
+      // nouveau tour de discussion : on efface les votes et les indices
       await ctx.admin.from('votes').delete().eq('round_id', roundId)
+      await ctx.admin.from('clues').delete().eq('round_id', roundId)
     }
     await ctx.admin.from('rounds').update({ phase }).eq('id', roundId)
 

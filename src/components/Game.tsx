@@ -4,7 +4,7 @@ import type { RevealedRole, Role } from '../lib/types'
 import { ROLE_LABELS } from '../lib/types'
 import { ROLE_COLOR } from '../lib/game'
 import { supabase } from '../lib/supabase'
-import { setPhase, resolveVote, submitGuess, castVote, startRound } from '../lib/api'
+import { setPhase, resolveVote, submitGuess, castVote, startRound, submitClue } from '../lib/api'
 
 export default function Game({ state }: { state: RoomState }) {
   const { room, players, round, myRole, votes, me } = state
@@ -85,6 +85,13 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
 
 // ---- Phase indices ------------------------------------------------------
 function CluePhase({ state }: { state: RoomState }) {
+  const { room } = state
+  const isRemote = room?.settings?.remoteMode ?? false
+  if (isRemote) return <RemoteCluePhase state={state} />
+  return <VerbalCluePhase state={state} />
+}
+
+function VerbalCluePhase({ state }: { state: RoomState }) {
   const { players, room, round, me } = state
   if (!me || !round || !room) return null
   const ordered = [...players]
@@ -116,11 +123,134 @@ function CluePhase({ state }: { state: RoomState }) {
   )
 }
 
+function RemoteCluePhase({ state }: { state: RoomState }) {
+  const { players, room, round, me, clues } = state
+  const [myClue, setMyClue] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  if (!me || !round || !room) return null
+
+  const ordered = [...players]
+    .filter((p) => p.turn_order != null)
+    .sort((a, b) => (a.turn_order ?? 0) - (b.turn_order ?? 0))
+
+  const mySubmitted = clues.find((c) => c.player_id === me.id)
+  const revealed = !!mySubmitted || !me.is_alive
+  const alive = players.filter((p) => p.is_alive)
+  const submittedCount = clues.filter((c) => alive.some((p) => p.id === c.player_id)).length
+
+  async function handleSubmit() {
+    if (!round || myClue.trim().length < 1) return
+    setBusy(true)
+    try {
+      await submitClue(round.id, me!.id, myClue.trim())
+      setEditing(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-4 py-3 ring-1 ring-white/10">
+        <span className="text-sm font-bold text-slate-300">🌐 Mode à distance</span>
+        <span className="text-sm text-slate-400">{submittedCount}/{alive.length} indices</span>
+      </div>
+
+      <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
+        <h3 className="mb-2 text-sm font-bold text-slate-300">Indices</h3>
+        <ol className="flex flex-col gap-2">
+          {ordered.map((p, i) => {
+            if (!p.is_alive) return null
+            const submitted = clues.find((c) => c.player_id === p.id)
+            const isMe = p.id === me.id
+            return (
+              <li
+                key={p.id}
+                className={`rounded-xl px-3 py-2 ${isMe ? 'bg-rose-500/10 ring-1 ring-rose-400/20' : 'bg-slate-900/60'}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-5 text-xs text-slate-500">{i + 1}.</span>
+                    <span className={isMe ? 'font-bold' : ''}>{p.name}{isMe && ' (toi)'}</span>
+                  </span>
+                  {submitted
+                    ? <span className="text-xs text-emerald-400">✓</span>
+                    : <span className="text-xs text-slate-500">···</span>
+                  }
+                </div>
+                {submitted && revealed && (
+                  <p className="mt-1 pl-6 text-sm italic text-slate-300">"{submitted.clue_text}"</p>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+
+      {me.is_alive && (
+        <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
+          {mySubmitted && !editing ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm text-slate-300">
+                Ton indice : <span className="font-bold text-white">"{mySubmitted.clue_text}"</span>
+              </p>
+              <button
+                onClick={() => { setMyClue(mySubmitted.clue_text); setEditing(true) }}
+                className="text-left text-xs text-slate-500 underline"
+              >
+                Modifier
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-slate-400">
+                {editing ? 'Modifier ton indice' : 'Tape ton indice (un seul mot)'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={myClue}
+                  onChange={(e) => setMyClue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+                  placeholder="Un mot…"
+                  maxLength={50}
+                  className="flex-1 rounded-xl bg-slate-900 px-4 py-2.5 text-lg outline-none ring-1 ring-white/10 focus:ring-rose-400"
+                />
+                <button
+                  disabled={busy || myClue.trim().length < 1}
+                  onClick={handleSubmit}
+                  className="rounded-xl bg-rose-500 px-4 py-2.5 font-bold disabled:opacity-40"
+                >
+                  {busy ? '…' : editing ? 'OK' : 'Envoyer'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!revealed && me.is_alive && (
+        <p className="text-center text-xs text-slate-500">
+          Tu verras les indices des autres après avoir envoyé le tien.
+        </p>
+      )}
+
+      {me.is_host && (
+        <HostButton onClick={() => setPhase(room!.id, round!.id, 'voting')}>
+          Passer au vote
+        </HostButton>
+      )}
+    </div>
+  )
+}
+
 // ---- Phase vote ---------------------------------------------------------
 function VotingPhase({ state }: { state: RoomState }) {
-  const { players, room, round, me, votes } = state
+  const { players, room, round, me, votes, clues } = state
   const [busy, setBusy] = useState(false)
   if (!me || !round || !room) return null
+  const isRemote = room.settings?.remoteMode ?? false
   const alive = players.filter((p) => p.is_alive)
   const myVote = votes.find((v) => v.voter_player_id === me.id)
   const tally = new Map<string, number>()
@@ -136,6 +266,23 @@ function VotingPhase({ state }: { state: RoomState }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {isRemote && clues.length > 0 && (
+        <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
+          <h3 className="mb-2 text-sm font-bold text-slate-300">Récapitulatif des indices</h3>
+          <ul className="flex flex-col gap-1">
+            {clues.map((clue) => {
+              const player = players.find((p) => p.id === clue.player_id)
+              return (
+                <li key={clue.id} className="flex items-center gap-2 rounded-lg bg-slate-900/60 px-3 py-2 text-sm">
+                  <span className="font-bold">{player?.name ?? '—'}</span>
+                  <span className="text-slate-500">—</span>
+                  <span className="italic text-slate-300">"{clue.clue_text}"</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
       <p className="text-center text-sm text-slate-300">
         {me.is_alive ? 'Vote pour éliminer un joueur' : 'Tu es éliminé : tu ne votes pas.'}
       </p>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, ensureAuth } from '../lib/supabase'
-import type { MyRole, Player, Room, Round, Vote } from '../lib/types'
+import type { Clue, MyRole, Player, Room, Round, Vote } from '../lib/types'
 
 export interface RoomState {
   room: Room | null
@@ -8,6 +8,7 @@ export interface RoomState {
   round: Round | null
   myRole: MyRole | null
   votes: Vote[]
+  clues: Clue[]
   me: Player | null
   uid: string | null
   loading: boolean
@@ -21,6 +22,7 @@ export function useRoom(code: string): RoomState {
   const [round, setRound] = useState<Round | null>(null)
   const [myRole, setMyRole] = useState<MyRole | null>(null)
   const [votes, setVotes] = useState<Vote[]>([])
+  const [clues, setClues] = useState<Clue[]>([])
   const [uid, setUid] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,9 +83,17 @@ export function useRoom(code: string): RoomState {
           .select('*')
           .eq('round_id', currentRound.id)
         setVotes((vts as Vote[]) ?? [])
+
+        const { data: cls } = await supabase
+          .from('clues')
+          .select('*')
+          .eq('round_id', currentRound.id)
+          .order('submitted_at', { ascending: true })
+        setClues((cls as Clue[]) ?? [])
       } else {
         setMyRole(null)
         setVotes([])
+        setClues([])
       }
 
       setError(null)
@@ -112,6 +122,7 @@ export function useRoom(code: string): RoomState {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds', filter: `room_id=eq.${room.id}` }, () => refreshRef.current())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => refreshRef.current())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'round_roles' }, () => refreshRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clues' }, () => refreshRef.current())
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -120,5 +131,5 @@ export function useRoom(code: string): RoomState {
 
   const me = players.find((p) => p.user_id === uid) ?? null
 
-  return { room, players, round, myRole, votes, me, uid, loading, error, refresh }
+  return { room, players, round, myRole, votes, clues, me, uid, loading, error, refresh }
 }

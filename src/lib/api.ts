@@ -91,6 +91,16 @@ async function invoke<T = unknown>(fn: string, body: Record<string, unknown>): P
   return data as T
 }
 
+export async function submitClue(roundId: string, playerId: string, clueText: string) {
+  const { error } = await supabase
+    .from('clues')
+    .upsert(
+      { round_id: roundId, player_id: playerId, clue_text: clueText },
+      { onConflict: 'round_id,player_id' },
+    )
+  if (error) throw error
+}
+
 export const startRound = (roomId: string) => invoke('start-round', { roomId })
 export const setPhase = (roomId: string, roundId: string, phase: 'voting' | 'clue') =>
   invoke('set-phase', { roomId, roundId, phase })

@@ -84,6 +84,8 @@ export default function Lobby({ state }: { state: RoomState }) {
         <Toggle label="Le Mercenaire" hint="civil neutre — gagne si sa cible secrète est éliminée" checked={s.enableMercenaire} disabled={!isHost} onChange={(v) => patch({ enableMercenaire: v })} />
         <Toggle label="Le Traître" hint="civil qui gagne avec les undercovers (sans les connaître)" checked={s.enableTraitre} disabled={!isHost} onChange={(v) => patch({ enableTraitre: v })} />
         <Toggle label="Le Parrain" hint="undercover révélé comme Civil à l'élimination" checked={s.enableParrain} disabled={!isHost} onChange={(v) => patch({ enableParrain: v })} />
+        <div className="my-2 h-px bg-white/10" />
+        <Toggle label="Mode à distance 🌐" hint="les joueurs tapent leurs indices dans l'app (jeu en ligne)" checked={s.remoteMode ?? false} disabled={!isHost} onChange={(v) => patch({ remoteMode: v })} />
         <p className="mt-2 text-xs text-slate-500">
           {impostorCount(s)} rôle(s) spécial(aux) · {Math.max(0, players.length - impostorCount(s))} civils
         </p>
