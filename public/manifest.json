@@ -1,0 +1,20 @@
+{
+  "name": "Undercover — Bar Edition",
+  "short_name": "Undercover",
+  "description": "Le jeu de société Undercover entre amis",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
