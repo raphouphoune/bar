@@ -444,7 +444,7 @@ function Results({ state }: { state: RoomState }) {
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
         <h3 className="mb-2 text-sm font-bold text-slate-300">Scores</h3>
         <ul className="flex flex-col gap-1">
-          {scoreboard.map((p, i) => (
+          {scoreboard.map((p) => (
             <li key={p.id} className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2">
               <span>{p.name}</span>
               <b>{p.score}</b>

@@ -925,7 +925,7 @@ export default function LocalGame() {
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold text-slate-300">Scores</h3>
           <ul className="flex flex-col gap-1">
-            {scoreboard.map((p, i) => (
+            {scoreboard.map((p) => (
               <li
                 key={p.id}
                 className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2"
