@@ -218,10 +218,10 @@ const ROLE_COLOR: Record<Role, string> = {
 }
 
 const WINNER_LABEL: Record<NonNullable<WinnerTeam>, string> = {
-  civils: '🟢 Les Civils gagnent !',
-  undercover: '🔴 Les Undercover gagnent !',
-  mr_white: '🎩 Mr White gagne !',
-  kamikaze: '😈 Le Kamikaze gagne !',
+  civils: 'Les Civils gagnent',
+  undercover: 'Les Undercover gagnent',
+  mr_white: 'Mr White gagne',
+  kamikaze: 'Le Kamikaze gagne',
 }
 
 type ToggleKey = 'enableMrWhite' | 'enableKamikaze' | 'enableTaupe' | 'enableMercenaire' | 'enableTraitre' | 'enableParrain'
@@ -496,7 +496,7 @@ export default function LocalGame() {
             Retour à l'accueil
           </button>
           <Link to="/roles" className="underline">
-            📖 Guide des rôles
+            Guide des rôles
           </Link>
         </div>
       </div>
@@ -545,7 +545,7 @@ export default function LocalGame() {
               )}
               {current.role === 'kamikaze' && (
                 <p className="text-sm text-amber-300">
-                  Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie pour gagner ! 😈
+                  Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie.
                 </p>
               )}
               {current.role === 'taupe' && (
@@ -567,7 +567,7 @@ export default function LocalGame() {
               )}
               {current.role === 'parrain' && (
                 <p className="text-sm text-fuchsia-300">
-                  Tu es le Parrain. Tu es undercover, mais si tu es éliminé tu seras révélé comme Civil. 🤫
+                  Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.
                 </p>
               )}
             </div>
@@ -582,7 +582,7 @@ export default function LocalGame() {
               }}
               className="w-full rounded-xl bg-slate-700 px-4 py-4 text-lg font-bold active:scale-[0.99]"
             >
-              J'ai mémorisé mon mot ✓
+              Continuer
             </button>
           </>
         )}
@@ -651,7 +651,7 @@ export default function LocalGame() {
                 <p className="text-sm text-sky-300">Tu es Mr White. Bluffe, puis devine le mot des civils.</p>
               )}
               {reviewPlayer!.role === 'kamikaze' && (
-                <p className="text-sm text-amber-300">Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie ! 😈</p>
+                <p className="text-sm text-amber-300">Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie.</p>
               )}
               {reviewPlayer!.role === 'taupe' && (
                 <p className="text-sm text-purple-300">
@@ -670,7 +670,7 @@ export default function LocalGame() {
               )}
               {reviewPlayer!.role === 'parrain' && (
                 <p className="text-sm text-fuchsia-300">
-                  Tu es le Parrain — révélé comme Civil si tu es éliminé. 🤫
+                  Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.
                 </p>
               )}
             </div>
@@ -678,7 +678,7 @@ export default function LocalGame() {
               onClick={closeReview}
               className="w-full rounded-xl bg-slate-700 px-4 py-4 text-lg font-bold active:scale-[0.99]"
             >
-              J'ai revu mon mot ✓
+              Continuer
             </button>
           </>
         )}
@@ -723,10 +723,10 @@ export default function LocalGame() {
         </button>
         <div className="flex justify-center gap-5 text-sm">
           <button onClick={openReview} className="text-slate-400 underline">
-            👁 Revoir mon mot
+            Revoir mon mot
           </button>
           <Link to="/roles" className="text-slate-500 underline">
-            📖 Rôles
+            Guide des rôles
           </Link>
         </div>
       </div>
@@ -769,10 +769,10 @@ export default function LocalGame() {
         )}
         <div className="flex justify-center gap-5 text-sm">
           <button onClick={openReview} className="text-slate-400 underline">
-            👁 Revoir mon mot
+            Revoir mon mot
           </button>
           <Link to="/roles" className="text-slate-500 underline">
-            📖 Rôles
+            Guide des rôles
           </Link>
         </div>
         <button
@@ -832,7 +832,7 @@ export default function LocalGame() {
     return (
       <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="w-full rounded-2xl bg-sky-500/10 p-5 ring-1 ring-sky-400/30">
-          <p className="text-xl text-sky-200">🎩 Mr White a été démasqué !</p>
+          <p className="text-xl text-sky-200">Mr White a été démasqué !</p>
           <p className="mt-1 text-sm text-slate-300">
             Il peut encore sauver sa mise en devinant le mot des civils.
           </p>
@@ -883,22 +883,22 @@ export default function LocalGame() {
           {taupe && (
             <p className={`mt-3 text-sm font-semibold ${taupeWon ? 'text-purple-400' : 'text-slate-400'}`}>
               {taupeWon
-                ? `🕵️ La Taupe (${taupe.name}) a protégé son undercover — elle gagne ! (+2 pts)`
-                : `🕵️ La Taupe (${taupe.name}) n'a pas protégé son undercover.`}
+                ? `La Taupe (${taupe.name}) a protégé son undercover — +2 pts`
+                : `La Taupe (${taupe.name}) n'a pas protégé son undercover.`}
             </p>
           )}
           {mercenaire && (
             <p className={`mt-2 text-sm font-semibold ${mercWon ? 'text-orange-400' : 'text-slate-400'}`}>
               {mercWon
-                ? `🎯 Le Mercenaire (${mercenaire.name}) a éliminé sa cible (${mercTarget!.name}) — il gagne ! (+3 pts)`
-                : `🎯 Le Mercenaire (${mercenaire.name}) n'a pas éliminé sa cible (${mercTarget?.name ?? '?'}).`}
+                ? `Le Mercenaire (${mercenaire.name}) a éliminé sa cible (${mercTarget!.name}) — +3 pts`
+                : `Le Mercenaire (${mercenaire.name}) n'a pas éliminé sa cible (${mercTarget?.name ?? '?'}).`}
             </p>
           )}
           {traitre && (
             <p className={`mt-2 text-sm font-semibold ${traitreWon ? 'text-red-400' : 'text-slate-400'}`}>
               {traitreWon
-                ? `🐍 Le Traître (${traitre.name}) gagne avec les undercovers ! (+2 pts)`
-                : `🐍 Le Traître (${traitre.name}) a perdu avec les undercovers.`}
+                ? `Le Traître (${traitre.name}) gagne avec les undercovers — +2 pts`
+                : `Le Traître (${traitre.name}) n'a pas gagné avec les undercovers.`}
             </p>
           )}
         </div>
@@ -931,7 +931,6 @@ export default function LocalGame() {
                 className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2"
               >
                 <span>
-                  {i === 0 ? '👑 ' : ''}
                   {p.name}
                 </span>
                 <b>{p.score}</b>

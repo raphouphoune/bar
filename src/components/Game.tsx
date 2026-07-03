@@ -57,7 +57,7 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
       className="rounded-2xl bg-slate-800/80 p-5 text-center ring-1 ring-white/10 active:scale-[0.99]"
     >
       {!shown ? (
-        <span className="text-slate-400">👆 Appuie pour voir ton mot (cache ton écran)</span>
+        <span className="text-slate-400">Appuie pour voir ton mot — cache ton écran</span>
       ) : (
         <div>
           <p className="text-xs uppercase tracking-widest text-slate-500">Ton mot</p>
@@ -68,14 +68,14 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
           )}
           {myRole.role === 'taupe' && (
             <p className="text-sm text-purple-300">
-              🕵️ Tu es la Taupe. L'undercover est <b>{nameOf(myRole.knows_player_id)}</b>. Protège-le !
+              Tu es la Taupe. L'undercover est <b>{nameOf(myRole.knows_player_id)}</b>. Protège-le.
             </p>
           )}
           {myRole.role === 'mr_white' && (
             <p className="text-sm text-sky-300">Tu es Mr White. Bluffe, puis devine le mot des civils.</p>
           )}
           {myRole.role === 'kamikaze' && (
-            <p className="text-sm text-amber-300">Tu es le Kamikaze : fais-toi éliminer tant qu'un undercover est encore en vie 😈</p>
+            <p className="text-sm text-amber-300">Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie.</p>
           )}
         </div>
       )}
@@ -152,7 +152,7 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-4 py-3 ring-1 ring-white/10">
-        <span className="text-sm font-bold text-slate-300">🌐 Mode à distance</span>
+        <span className="text-sm font-bold text-slate-300">Mode à distance</span>
         <span className="text-sm text-slate-400">{submittedCount}/{alive.length} indices</span>
       </div>
 
@@ -353,14 +353,14 @@ function MrWhiteGuess({ state }: { state: RoomState }) {
   if (!amMrWhite) {
     return (
       <div className="rounded-2xl bg-sky-500/10 p-5 text-center ring-1 ring-sky-400/30">
-        <p className="text-lg text-sky-200">🎩 Mr White a été démasqué !</p>
+        <p className="text-lg text-sky-200">Mr White a été démasqué !</p>
         <p className="mt-1 text-sm text-slate-300">Il tente de deviner le mot des civils…</p>
       </div>
     )
   }
   return (
     <div className="rounded-2xl bg-sky-500/10 p-5 ring-1 ring-sky-400/30">
-      <p className="text-center text-lg text-sky-200">🎩 Tu es démasqué, Mr White !</p>
+      <p className="text-center text-lg text-sky-200">Tu es démasqué, Mr White !</p>
       <p className="mt-1 text-center text-sm text-slate-300">Devine le mot des civils pour gagner :</p>
       <input
         value={guess}
@@ -392,10 +392,10 @@ function MrWhiteGuess({ state }: { state: RoomState }) {
 
 // ---- Résultats / fin de manche ------------------------------------------
 const WINNER_LABEL: Record<string, string> = {
-  civils: '🟢 Les Civils gagnent !',
-  undercover: '🔴 Les Undercover gagnent !',
-  mr_white: '🎩 Mr White gagne !',
-  kamikaze: '😈 Le Kamikaze gagne !',
+  civils: 'Les Civils gagnent',
+  undercover: 'Les Undercover gagnent',
+  mr_white: 'Mr White gagne',
+  kamikaze: 'Le Kamikaze gagne',
 }
 
 function Results({ state }: { state: RoomState }) {
@@ -446,7 +446,7 @@ function Results({ state }: { state: RoomState }) {
         <ul className="flex flex-col gap-1">
           {scoreboard.map((p, i) => (
             <li key={p.id} className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2">
-              <span>{i === 0 ? '👑 ' : ''}{p.name}</span>
+              <span>{p.name}</span>
               <b>{p.score}</b>
             </li>
           ))}
