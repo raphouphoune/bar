@@ -5,6 +5,7 @@ import { ROLE_LABELS } from '../lib/types'
 import { ROLE_COLOR } from '../lib/game'
 import { supabase } from '../lib/supabase'
 import { setPhase, resolveVote, submitGuess, castVote, startRound, submitClue } from '../lib/api'
+import Timer from './Timer'
 
 export default function Game({ state }: { state: RoomState }) {
   const { room, players, round, myRole, votes, me } = state
@@ -77,6 +78,17 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
           {myRole.role === 'kamikaze' && (
             <p className="text-sm text-amber-300">Tu es le Kamikaze. Fais-toi éliminer tant qu'un undercover est encore en vie.</p>
           )}
+          {myRole.role === 'mercenaire' && (
+            <p className="text-sm text-orange-300">
+              Tu es le Mercenaire. Ta cible secrète est <b>{nameOf(myRole.knows_player_id)}</b>. Fais-la éliminer pour gagner !
+            </p>
+          )}
+          {myRole.role === 'traitre' && (
+            <p className="text-sm text-red-400">Tu es le Traître. Tu gagnes avec les undercovers, mais tu ne sais pas qui ils sont.</p>
+          )}
+          {myRole.role === 'parrain' && (
+            <p className="text-sm text-fuchsia-300">Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.</p>
+          )}
         </div>
       )}
     </button>
@@ -99,6 +111,7 @@ function VerbalCluePhase({ state }: { state: RoomState }) {
     .sort((a, b) => (a.turn_order ?? 0) - (b.turn_order ?? 0))
   return (
     <div className="flex flex-col gap-4">
+      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.round_number} />
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
         <h3 className="mb-2 text-sm font-bold text-slate-300">Ordre de parole (à l'oral)</h3>
         <ol className="flex flex-col gap-1">
@@ -151,6 +164,7 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.round_number} />
       <div className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-4 py-3 ring-1 ring-white/10">
         <span className="text-sm font-bold text-slate-300">Mode à distance</span>
         <span className="text-sm text-slate-400">{submittedCount}/{alive.length} indices</span>
@@ -419,8 +433,24 @@ function Results({ state }: { state: RoomState }) {
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '—'
   const scoreboard = [...players].sort((a, b) => b.score - a.score)
 
+  const targetScore = room.settings?.targetScore ?? 0
+  const topScore = scoreboard[0]?.score ?? 0
+  const nightWinners =
+    targetScore > 0 && topScore >= targetScore
+      ? scoreboard.filter((p) => p.score === topScore)
+      : []
+
   return (
     <div className="flex flex-col gap-4">
+      {nightWinners.length > 0 && (
+        <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
+          <p className="text-4xl">🏆</p>
+          <p className="mt-1 text-xl font-black text-amber-300">
+            {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
+          </p>
+          <p className="mt-1 text-sm text-slate-300">{topScore} points atteints (objectif : {targetScore}).</p>
+        </div>
+      )}
       <div className="rounded-2xl bg-slate-800/80 p-5 text-center ring-1 ring-white/10">
         <p className="text-2xl font-black">{WINNER_LABEL[round!.winner_team ?? ''] ?? 'Fin de manche'}</p>
         <div className="mt-3 flex justify-center gap-6 text-sm">

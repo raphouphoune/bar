@@ -3,7 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import type { RoomState } from '../hooks/useRoom'
 import type { RoomSettings } from '../lib/types'
 import { updateSettings, startRound, leaveRoom } from '../lib/api'
-import { settingsValid, impostorCount } from '../lib/game'
+import { settingsValid, impostorCount, suggestedSettings } from '../lib/game'
+
+function formatTimer(v: number): string {
+  if (v <= 0) return 'off'
+  if (v < 60) return `${v}s`
+  const m = Math.floor(v / 60)
+  const s = v % 60
+  return s === 0 ? `${m} min` : `${m}:${s.toString().padStart(2, '0')}`
+}
 
 export default function Lobby({ state }: { state: RoomState }) {
   const navigate = useNavigate()
@@ -71,7 +79,17 @@ export default function Lobby({ state }: { state: RoomState }) {
       </div>
 
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
-        <h3 className="mb-3 text-sm font-bold text-slate-300">Réglages</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-300">Réglages</h3>
+          {isHost && (
+            <button
+              onClick={() => patch(suggestedSettings(players.length))}
+              className="rounded-lg bg-slate-700 px-3 py-1 text-xs font-semibold active:scale-95"
+            >
+              Réglages conseillés
+            </button>
+          )}
+        </div>
         <Stepper
           label="Nombre d'undercover"
           value={s.undercoverCount}
@@ -86,6 +104,22 @@ export default function Lobby({ state }: { state: RoomState }) {
         <Toggle label="Le Parrain" hint="undercover révélé comme Civil à l'élimination" checked={s.enableParrain} disabled={!isHost} onChange={(v) => patch({ enableParrain: v })} />
         <div className="my-2 h-px bg-white/10" />
         <Toggle label="Mode à distance" hint="les joueurs tapent leurs indices dans l'app (jeu en ligne)" checked={s.remoteMode ?? false} disabled={!isHost} onChange={(v) => patch({ remoteMode: v })} />
+        <div className="my-2 h-px bg-white/10" />
+        <Stepper
+          label="Score cible (soirée)"
+          value={s.targetScore ?? 0}
+          disabled={!isHost}
+          format={(v) => (v <= 0 ? 'illimité' : `${v} pts`)}
+          onChange={(v) => patch({ targetScore: Math.max(0, v) })}
+        />
+        <Stepper
+          label="Minuteur de discussion"
+          value={s.timerSeconds ?? 0}
+          step={15}
+          disabled={!isHost}
+          format={formatTimer}
+          onChange={(v) => patch({ timerSeconds: Math.max(0, v) })}
+        />
         <p className="mt-2 text-xs text-slate-500">
           {impostorCount(s)} rôle(s) spécial(aux) · {Math.max(0, players.length - impostorCount(s))} civils
         </p>
@@ -121,14 +155,14 @@ export default function Lobby({ state }: { state: RoomState }) {
   )
 }
 
-function Stepper({ label, value, onChange, disabled }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+function Stepper({ label, value, onChange, disabled, step = 1, format }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean; step?: number; format?: (v: number) => string }) {
   return (
     <div className="mb-3 flex items-center justify-between">
       <span className="text-sm">{label}</span>
       <div className="flex items-center gap-3">
-        <button disabled={disabled} onClick={() => onChange(value - 1)} className="h-8 w-8 rounded-lg bg-slate-700 text-lg disabled:opacity-30">−</button>
-        <span className="w-6 text-center font-bold">{value}</span>
-        <button disabled={disabled} onClick={() => onChange(value + 1)} className="h-8 w-8 rounded-lg bg-slate-700 text-lg disabled:opacity-30">+</button>
+        <button disabled={disabled} onClick={() => onChange(value - step)} className="h-8 w-8 rounded-lg bg-slate-700 text-lg disabled:opacity-30">−</button>
+        <span className="min-w-[3.5rem] text-center font-bold">{format ? format(value) : value}</span>
+        <button disabled={disabled} onClick={() => onChange(value + step)} className="h-8 w-8 rounded-lg bg-slate-700 text-lg disabled:opacity-30">+</button>
       </div>
     </div>
   )

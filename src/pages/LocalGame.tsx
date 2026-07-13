@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import Timer from '../components/Timer'
 
 type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe' | 'mercenaire' | 'traitre' | 'parrain'
 type WinnerTeam = 'civils' | 'undercover' | 'mr_white' | 'kamikaze' | null
@@ -24,6 +25,10 @@ interface Settings {
   enableMercenaire: boolean
   enableTraitre: boolean
   enableParrain: boolean
+  targetScore: number
+  timerSeconds: number
+  wordPack: string
+  enableGages: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +39,44 @@ const DEFAULT_SETTINGS: Settings = {
   enableMercenaire: false,
   enableTraitre: false,
   enableParrain: false,
+  targetScore: 0,
+  timerSeconds: 0,
+  wordPack: 'classique',
+  enableGages: false,
+}
+
+/** Réglages conseillés selon le nombre de joueurs. */
+function suggestedLocalSettings(n: number): Partial<Settings> {
+  if (n <= 4) return { undercoverCount: 1, enableMrWhite: false }
+  if (n <= 6) return { undercoverCount: 1, enableMrWhite: true }
+  if (n <= 9) return { undercoverCount: 2, enableMrWhite: true }
+  return { undercoverCount: 3, enableMrWhite: true }
+}
+
+function formatTimer(v: number): string {
+  if (v <= 0) return 'off'
+  if (v < 60) return `${v}s`
+  const m = Math.floor(v / 60)
+  const sec = v % 60
+  return sec === 0 ? `${m} min` : `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+/** Gages piochés pour le joueur éliminé (mode bar, optionnel). */
+const GAGES: string[] = [
+  'Cul sec !',
+  'Distribue 2 gorgées à qui tu veux.',
+  'Bois une gorgée.',
+  'Raconte ta pire soirée.',
+  'Imite un autre joueur jusqu\'au prochain vote.',
+  'Fais une déclaration d\'amour à ton voisin de gauche.',
+  'Parle avec l\'accent de ton choix jusqu\'à la fin de la manche.',
+  'Chante le refrain d\'une chanson choisie par le groupe.',
+  'Interdit de dire "oui" ou "non" jusqu\'au prochain vote.',
+  'Offre la prochaine tournée (ou un verre d\'eau, soyons sérieux).',
+]
+
+function pickGage(): string {
+  return GAGES[Math.floor(Math.random() * GAGES.length)]
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -66,8 +109,48 @@ const WORD_PAIRS: [string, string][] = [
   ['cinéma', 'théâtre'], ['usine', 'atelier'], ['marché', 'supermarché'],
 ]
 
-function pickWordPair(): { civil: string; undercover: string } {
-  const [a, b] = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)]
+const BAR_PAIRS: [string, string][] = [
+  ['bière', 'vin'], ['mojito', 'margarita'], ['whisky', 'rhum'], ['vodka', 'gin'],
+  ['pastis', 'martini'], ['champagne', 'crémant'], ['tequila', 'mezcal'],
+  ['cacahuètes', 'chips'], ['glaçon', 'paille'], ['pinte', 'chope'],
+  ['barman', 'serveur'], ['comptoir', 'terrasse'], ['tireuse', 'bouteille'],
+  ['shooter', 'cocktail'], ['gueule de bois', 'migraine'], ['apéro', 'digestif'],
+  ['cidre', 'kir'], ['limonade', 'soda'], ['café', 'thé'], ['tournée', 'addition'],
+]
+
+const POP_PAIRS: [string, string][] = [
+  ['Batman', 'Superman'], ['Mario', 'Luigi'], ['Pikachu', 'Salamèche'],
+  ['Naruto', 'Sasuke'], ['Harry Potter', 'Gandalf'], ['Dark Vador', 'Yoda'],
+  ['Iron Man', 'Captain America'], ['Sherlock', 'Poirot'], ['Zelda', 'Peach'],
+  ['Goku', 'Vegeta'], ['Simpson', 'Griffin'], ['Netflix', 'Youtube'],
+  ['TikTok', 'Instagram'], ['PlayStation', 'Xbox'], ['Marvel', 'DC'],
+  ['Star Wars', 'Star Trek'], ['Pokémon', 'Digimon'], ['Minecraft', 'Fortnite'],
+]
+
+const SOIREE_PAIRS: [string, string][] = [
+  ['crush', 'date'], ['ex', 'plan'], ['selfie', 'story'], ['dancefloor', 'bar'],
+  ['flirt', 'drague'], ['bisou', 'câlin'], ['ghosting', 'friendzone'],
+  ['after', 'apéro'], ['boîte', 'bar'], ['playlist', 'ambiance'],
+  ['smartphone', 'appli de rencontre'], ['tinder', 'instagram'],
+  ['soirée pyjama', 'boum'], ['karaoké', 'blind test'], ['gage', 'défi'],
+]
+
+interface WordPack {
+  id: string
+  label: string
+  pairs: [string, string][]
+}
+
+const WORD_PACKS: WordPack[] = [
+  { id: 'classique', label: 'Classique', pairs: WORD_PAIRS },
+  { id: 'bar', label: 'Bar 🍻', pairs: BAR_PAIRS },
+  { id: 'pop', label: 'Culture pop 🎮', pairs: POP_PAIRS },
+  { id: 'soiree', label: 'Soirée 🔥', pairs: SOIREE_PAIRS },
+]
+
+function pickWordPair(packId: string): { civil: string; undercover: string } {
+  const pack = WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]
+  const [a, b] = pack.pairs[Math.floor(Math.random() * pack.pairs.length)]
   return Math.random() < 0.5 ? { civil: a, undercover: b } : { civil: b, undercover: a }
 }
 
@@ -255,6 +338,7 @@ export default function LocalGame() {
   const [reviewMode, setReviewMode] = useState(false)
   const [reviewPlayerId, setReviewPlayerId] = useState<string | null>(null)
   const [reviewWordShown, setReviewWordShown] = useState(false)
+  const [gage, setGage] = useState<string | null>(null)
 
   const nameOf = (id: string | null) => players.find((p) => p.id === id)?.name ?? '—'
 
@@ -290,7 +374,7 @@ export default function LocalGame() {
       taupeKnows: null as string | null,
       mercenaireTarget: null as string | null,
     }))
-    const words = pickWordPair()
+    const words = pickWordPair(settings.wordPack)
     setCivilWord(words.civil)
     setUndercoverWord(words.undercover)
     const assigned = assignRoles(base, settings, words)
@@ -303,6 +387,7 @@ export default function LocalGame() {
     setWinner(null)
     setMrGuess('')
     setSelectedVote(null)
+    setGage(null)
     setManche((m) => m + 1)
     setPhase('revealing')
   }
@@ -314,6 +399,7 @@ export default function LocalGame() {
     const updated = players.map((p) => (p.id === id ? { ...p, isAlive: false } : p))
     const elim = updated.find((p) => p.id === id)!
     setEliminatedId(id)
+    setGage(settings.enableGages ? pickGage() : null)
 
     if (elim.role === 'kamikaze') {
       const undercoverAlive = updated.some(
@@ -438,7 +524,15 @@ export default function LocalGame() {
         </div>
 
         <div className={card}>
-          <h2 className="mb-3 text-sm font-bold text-slate-300">Réglages</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-300">Réglages</h2>
+            <button
+              onClick={() => setSettings((s) => ({ ...s, ...suggestedLocalSettings(players.length) }))}
+              className="rounded-lg bg-slate-700 px-3 py-1 text-xs font-semibold active:scale-95"
+            >
+              Réglages conseillés
+            </button>
+          </div>
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm">Nombre d'undercover</span>
             <div className="flex items-center gap-3">
@@ -480,6 +574,58 @@ export default function LocalGame() {
               </span>
             </button>
           ))}
+
+          <div className="my-3 h-px bg-white/10" />
+
+          <p className="mb-2 text-sm">Thème des mots</p>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            {WORD_PACKS.map((pack) => (
+              <button
+                key={pack.id}
+                onClick={() => setSettings((s) => ({ ...s, wordPack: pack.id }))}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ring-1 transition active:scale-[0.98] ${
+                  settings.wordPack === pack.id
+                    ? 'bg-rose-500/30 ring-rose-400'
+                    : 'bg-slate-900/60 ring-white/10'
+                }`}
+              >
+                {pack.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setSettings((s) => ({ ...s, enableGages: !s.enableGages }))}
+            className="mb-2 flex w-full items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2 text-left"
+          >
+            <span>
+              <span className="block text-sm">Gages (mode bar) 🍻</span>
+              <span className="block text-xs text-slate-500">le joueur éliminé pioche un gage</span>
+            </span>
+            <span className={`h-6 w-11 rounded-full p-0.5 transition ${settings.enableGages ? 'bg-rose-500' : 'bg-slate-600'}`}>
+              <span className={`block h-5 w-5 rounded-full bg-white transition ${settings.enableGages ? 'translate-x-5' : ''}`} />
+            </span>
+          </button>
+
+          <div className="my-3 h-px bg-white/10" />
+
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm">Score cible (soirée)</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSettings((s) => ({ ...s, targetScore: Math.max(0, s.targetScore - 1) }))} className="h-8 w-8 rounded-lg bg-slate-700 text-lg">−</button>
+              <span className="min-w-[4rem] text-center font-bold">{settings.targetScore <= 0 ? 'illimité' : `${settings.targetScore} pts`}</span>
+              <button onClick={() => setSettings((s) => ({ ...s, targetScore: s.targetScore + 1 }))} className="h-8 w-8 rounded-lg bg-slate-700 text-lg">+</button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Minuteur de discussion</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSettings((s) => ({ ...s, timerSeconds: Math.max(0, s.timerSeconds - 15) }))} className="h-8 w-8 rounded-lg bg-slate-700 text-lg">−</button>
+              <span className="min-w-[4rem] text-center font-bold">{formatTimer(settings.timerSeconds)}</span>
+              <button onClick={() => setSettings((s) => ({ ...s, timerSeconds: s.timerSeconds + 15 }))} className="h-8 w-8 rounded-lg bg-slate-700 text-lg">+</button>
+            </div>
+          </div>
         </div>
 
         {err && <p className="text-center text-sm text-amber-400">{err}</p>}
@@ -695,6 +841,7 @@ export default function LocalGame() {
           <h2 className="text-xl font-bold">Phase d'indices</h2>
           <p className="mt-1 text-sm text-slate-400">Manche {manche}</p>
         </header>
+        <Timer seconds={settings.timerSeconds} resetKey={manche} />
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold text-slate-300">Ordre de parole</h3>
           <ol className="flex flex-col gap-1">
@@ -817,6 +964,12 @@ export default function LocalGame() {
             <p className="mt-2 text-sm text-slate-400">La partie continue.</p>
           )}
         </div>
+        {gage && elim && (
+          <div className="w-full rounded-2xl bg-amber-500/15 p-4 text-center ring-1 ring-amber-400/40">
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Gage pour {elim.name}</p>
+            <p className="mt-1 text-lg font-semibold text-amber-100">{gage}</p>
+          </div>
+        )}
         <button
           onClick={handleContinueFromResult}
           className="w-full rounded-xl bg-rose-500 px-4 py-4 text-lg font-bold"
@@ -868,8 +1021,22 @@ export default function LocalGame() {
     const mercWon = mercTarget != null && !mercTarget.isAlive
     const traitre = players.find((p) => p.role === 'traitre')
     const traitreWon = winner === 'undercover'
+    const topScore = scoreboard[0]?.score ?? 0
+    const nightWinners =
+      settings.targetScore > 0 && topScore >= settings.targetScore
+        ? scoreboard.filter((p) => p.score === topScore)
+        : []
     return (
       <div className="mx-auto flex min-h-full max-w-md flex-col gap-5 p-4">
+        {nightWinners.length > 0 && (
+          <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
+            <p className="text-4xl">🏆</p>
+            <p className="mt-1 text-xl font-black text-amber-300">
+              {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
+            </p>
+            <p className="mt-1 text-sm text-slate-300">{topScore} points atteints (objectif : {settings.targetScore}).</p>
+          </div>
+        )}
         <div className={`${card} text-center`}>
           <p className="text-2xl font-black">{winner ? WINNER_LABEL[winner] : 'Fin de manche'}</p>
           <div className="mt-3 flex justify-center gap-6 text-sm">

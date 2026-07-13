@@ -21,6 +21,10 @@ export interface RoomSettings {
   enableTraitre: boolean
   enableParrain: boolean
   remoteMode: boolean
+  /** Score à atteindre pour gagner la soirée. 0 = parties illimitées. */
+  targetScore: number
+  /** Durée du minuteur de discussion en secondes. 0 = pas de minuteur. */
+  timerSeconds: number
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -32,6 +36,8 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   enableTraitre: false,
   enableParrain: false,
   remoteMode: false,
+  targetScore: 0,
+  timerSeconds: 0,
 }
 
 export interface Clue {
