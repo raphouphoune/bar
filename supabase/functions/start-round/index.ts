@@ -8,7 +8,7 @@
 // =========================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
-import { assignRoles, pickFirstPlayer, type Settings } from '../_shared/roles.ts'
+import { assignRoles, pickFirstPlayer, shuffle, type Settings } from '../_shared/roles.ts'
 import { getWordPair } from '../_shared/words.ts'
 
 Deno.serve(async (req) => {
@@ -52,7 +52,11 @@ Deno.serve(async (req) => {
       return json({ error: 'Il faut au moins 3 joueurs' }, 400)
     }
 
-    const settings = room.settings as Settings & { wordPack?: string }
+    const settings = room.settings as Settings & {
+      wordPack?: string
+      customPairs?: [string, string][]
+      enableBinome?: boolean
+    }
     const playerIds = players.map((p) => p.id)
 
     // 3. Réinitialise tout le monde "vivant", remet l'ordre à plat
@@ -77,7 +81,44 @@ Deno.serve(async (req) => {
         [String(s.civil_word).toLowerCase(), String(s.undercover_word).toLowerCase()].sort().join('|'),
       )
     }
-    const { civil, undercover } = await getWordPair(settings.wordPack, exclude)
+    const { civil, undercover } = await getWordPair(
+      settings.wordPack,
+      exclude,
+      settings.customPairs ?? [],
+    )
+
+    // Binôme : partenaires secrets, STABLES sur la partie (on réutilise le duo
+    // de la manche précédente s'il couvre encore tout le monde, sinon on retire).
+    const partnerOf: Record<string, string> = {}
+    if (settings.enableBinome) {
+      const { data: lastRound } = await admin
+        .from('rounds')
+        .select('id')
+        .eq('room_id', roomId)
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (lastRound) {
+        const { data: prev } = await admin
+          .from('round_roles')
+          .select('player_id, partner_player_id')
+          .eq('round_id', lastRound.id)
+        const map: Record<string, string> = {}
+        for (const r of prev ?? []) if (r.partner_player_id) map[r.player_id] = r.partner_player_id
+        const valid =
+          Object.keys(map).length >= playerIds.length - 1 &&
+          Object.entries(map).every(([a, b]) => playerIds.includes(a) && playerIds.includes(b))
+        if (valid) Object.assign(partnerOf, map)
+      }
+      if (Object.keys(partnerOf).length === 0) {
+        const sh = shuffle(playerIds)
+        for (let i = 0; i + 1 < sh.length; i += 2) {
+          partnerOf[sh[i]] = sh[i + 1]
+          partnerOf[sh[i + 1]] = sh[i]
+        }
+      }
+    }
+
     const firstPlayerId = pickFirstPlayer(assignments)
     const roundNumber = (room.current_round ?? 0) + 1
 
@@ -114,6 +155,8 @@ Deno.serve(async (req) => {
             ? null
             : civil, // civil, taupe, kamikaze, traître, mercenaire reçoivent le mot civil
       knows_player_id: a.knowsPlayerId ?? null,
+      // Clé incluse uniquement en mode Binôme (colonne ajoutée par la migration 0004).
+      ...(settings.enableBinome ? { partner_player_id: partnerOf[a.playerId] ?? null } : {}),
     }))
     await admin.from('round_roles').insert(roleRows)
 

@@ -25,10 +25,20 @@ export interface RoomSettings {
   targetScore: number
   /** Durée du minuteur de discussion en secondes. 0 = pas de minuteur. */
   timerSeconds: number
-  /** Thème des mots. 'conceptnet' = tirage en direct ; sinon pack statique. */
+  /** Thème des mots. 'conceptnet' = tirage en direct ; 'perso' = mots du groupe ; sinon pack statique. */
   wordPack: string
   /** Gages (mode bar) : le joueur éliminé pioche un gage. */
   enableGages: boolean
+  /** Les undercovers (et le Parrain) se connaissent entre eux. */
+  enableComplices: boolean
+  /** Indices guidés : l'app impose le type d'indice à chaque manche. */
+  enableClueAngles: boolean
+  /** Online : indices simultanés (révélés d'un coup) + votes cachés jusqu'au dépouillement. */
+  blindMode: boolean
+  /** Binôme coopératif : chaque joueur a un partenaire secret, scores par duo. */
+  enableBinome: boolean
+  /** Paires de mots saisies par le groupe (pack 'perso'). */
+  customPairs: [string, string][]
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -44,15 +54,21 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   timerSeconds: 0,
   wordPack: 'conceptnet',
   enableGages: false,
+  enableComplices: false,
+  enableClueAngles: false,
+  blindMode: false,
+  enableBinome: false,
+  customPairs: [],
 }
 
-/** Packs de mots proposés en mode multi-téléphones. */
+/** Packs de mots proposés dans les réglages. */
 export const ONLINE_WORD_PACKS: { id: string; label: string }[] = [
   { id: 'conceptnet', label: 'Mystère' },
   { id: 'classique', label: 'Classique' },
   { id: 'bar', label: 'Bar' },
   { id: 'pop', label: 'Culture pop' },
   { id: 'soiree', label: 'Soirée' },
+  { id: 'perso', label: 'Mots perso' },
 ]
 
 export interface Clue {
@@ -108,6 +124,7 @@ export interface RevealedRole {
   player_id: string
   role: Role
   word: string | null
+  partner_player_id?: string | null
 }
 
 /** Lecture restreinte par RLS : un joueur ne lit que SA ligne. */
@@ -116,8 +133,10 @@ export interface MyRole {
   player_id: string
   role: Role
   word: string | null
-  // Taupe : id de l'undercover connu. Mercenaire : id de la cible.
+  // Taupe : id de l'undercover connu. Mercenaire : cible. Complices : un coéquipier.
   knows_player_id: string | null
+  // Binôme : id du partenaire secret (mode Binôme).
+  partner_player_id: string | null
 }
 
 export interface Vote {

@@ -45,12 +45,17 @@ export interface RoleFlags {
   enableMercenaire: boolean
   enableTraitre: boolean
   enableParrain: boolean
+  /** Les undercovers (et le Parrain) se connaissent entre eux. */
+  enableComplices?: boolean
 }
 
 export interface Assignment {
   playerId: string
   role: Role
-  /** Taupe → l'undercover connu ; Mercenaire → la cible ; sinon null. */
+  /**
+   * Taupe → l'undercover connu ; Mercenaire → la cible ;
+   * Undercover/Parrain en mode Complices → un coéquipier ; sinon null.
+   */
   knowsPlayerId: string | null
 }
 
@@ -119,6 +124,17 @@ export function assignRoles(playerIds: string[], s: RoleFlags): Assignment[] {
       merc.role = 'mercenaire'
       const others = assignments.filter((a) => a.playerId !== merc.playerId)
       merc.knowsPlayerId = shuffle(others)[0].playerId
+    }
+  }
+
+  // Complices : les undercovers (et le Parrain) se reconnaissent. On les relie
+  // en anneau via knowsPlayerId (avec 2 imposteurs, chacun voit l'autre).
+  if (s.enableComplices) {
+    const team = assignments.filter((a) => a.role === 'undercover' || a.role === 'parrain')
+    if (team.length >= 2) {
+      for (let i = 0; i < team.length; i++) {
+        team[i].knowsPlayerId = team[(i + 1) % team.length].playerId
+      }
     }
   }
 
@@ -332,17 +348,80 @@ export function pickWordPair(packId: string): WordPair {
 export function drawFromPack(
   packId: string,
   used: string[] = [],
+  customPairs?: [string, string][],
 ): { pair: WordPair; used: string[] } {
-  const pack = WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]
+  const source =
+    packId === 'perso'
+      ? customPairs ?? []
+      : (WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]).pairs
+  const pairs = source.length > 0 ? source : WORD_PACKS[0].pairs
   const seen = new Set(used)
-  let available = pack.pairs.filter(([a, b]) => !seen.has(pairKey(a, b)))
+  let available = pairs.filter(([a, b]) => !seen.has(pairKey(a, b)))
   let base = used
   if (available.length === 0) {
-    available = pack.pairs // sac vidé → on recommence un tour
+    available = pairs // sac vidé → on recommence un tour
     base = []
   }
   const [a, b] = rand(available)
   return { pair: coinFlip(a, b), used: [...base, pairKey(a, b)] }
+}
+
+// ---- Indices guidés : l'app impose le TYPE d'indice (reste abstrait, ------
+//      donc les undercovers peuvent se fondre) --------------------------------
+export const CLUE_ANGLES: string[] = [
+  'une couleur',
+  'un lieu',
+  'une émotion',
+  'une matière',
+  'un verbe (une action)',
+  'une saison',
+  'un goût ou une odeur',
+  'un objet du quotidien',
+  'un animal',
+  'un métier',
+]
+
+/** Angle imposé pour une manche donnée (tourne de façon déterministe). */
+export function clueAngle(roundNumber: number): string {
+  return CLUE_ANGLES[(Math.max(1, roundNumber) - 1) % CLUE_ANGLES.length]
+}
+
+// ---- Binôme coopératif ---------------------------------------------------
+
+/**
+ * Répartit les joueurs en duos aléatoires. Renvoie une map réciproque
+ * playerId → partenaire. Si le nombre est impair, un joueur reste solo (absent).
+ */
+export function pairPlayers(ids: string[]): Record<string, string> {
+  const shuffled = shuffle(ids)
+  const map: Record<string, string> = {}
+  for (let i = 0; i + 1 < shuffled.length; i += 2) {
+    map[shuffled[i]] = shuffled[i + 1]
+    map[shuffled[i + 1]] = shuffled[i]
+  }
+  return map
+}
+
+/**
+ * Regroupe des ids en duos selon une map de partenaires réciproque.
+ * Renvoie des groupes de 1 (solo) ou 2 ids, sans doublon.
+ */
+export function duoGroups(ids: string[], partnerOf: Record<string, string>): string[][] {
+  const seen = new Set<string>()
+  const groups: string[][] = []
+  for (const id of ids) {
+    if (seen.has(id)) continue
+    const partner = partnerOf[id]
+    if (partner && ids.includes(partner) && !seen.has(partner)) {
+      groups.push([id, partner])
+      seen.add(id)
+      seen.add(partner)
+    } else {
+      groups.push([id])
+      seen.add(id)
+    }
+  }
+  return groups
 }
 
 // ---- Mode « Mystère » : génération à la volée (base en ligne) ------------

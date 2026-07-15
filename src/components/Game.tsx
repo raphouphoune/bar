@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { RoomState } from '../hooks/useRoom'
 import type { RevealedRole, Role } from '../lib/types'
 import { ROLE_LABELS } from '../lib/types'
-import { ROLE_COLOR, WINNER_LABELS } from '../lib/engine'
+import { ROLE_COLOR, WINNER_LABELS, clueAngle, duoGroups } from '../lib/engine'
 import { supabase } from '../lib/supabase'
 import { setPhase, resolveVote, submitGuess, castVote, startRound, submitClue } from '../lib/api'
 import Timer from './Timer'
@@ -89,9 +89,29 @@ function MyWord({ myRole, nameOf }: { myRole: RoomState['myRole']; nameOf: (id: 
           {myRole.role === 'parrain' && (
             <p className="text-sm text-fuchsia-300">Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.</p>
           )}
+          {(myRole.role === 'undercover' || myRole.role === 'parrain') && myRole.knows_player_id && (
+            <p className="text-sm text-rose-300">
+              Complice : <b>{nameOf(myRole.knows_player_id)}</b>
+            </p>
+          )}
+          {myRole.partner_player_id && (
+            <p className="text-sm text-cyan-300">
+              Binôme : <b>{nameOf(myRole.partner_player_id)}</b>
+            </p>
+          )}
         </div>
       )}
     </button>
+  )
+}
+
+function ClueAngleBanner({ round, room }: { round: RoomState['round']; room: RoomState['room'] }) {
+  if (!round || !room?.settings?.enableClueAngles) return null
+  return (
+    <div className="rounded-2xl bg-indigo-500/15 p-3 text-center ring-1 ring-indigo-400/30">
+      <p className="text-xs uppercase tracking-widest text-indigo-300">Ton indice doit être…</p>
+      <p className="text-lg font-bold text-indigo-100">{clueAngle(round.round_number)}</p>
+    </div>
   )
 }
 
@@ -112,6 +132,7 @@ function VerbalCluePhase({ state }: { state: RoomState }) {
   return (
     <div className="flex flex-col gap-4">
       <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.id} startedAt={round.phase_started_at} />
+      <ClueAngleBanner round={round} room={room} />
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
         <h3 className="mb-2 text-sm font-bold text-slate-300">Ordre de parole (à l'oral)</h3>
         <ol className="flex flex-col gap-1">
@@ -148,9 +169,12 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
     .sort((a, b) => (a.turn_order ?? 0) - (b.turn_order ?? 0))
 
   const mySubmitted = clues.find((c) => c.player_id === me.id)
-  const revealed = !!mySubmitted || !me.is_alive
   const alive = players.filter((p) => p.is_alive)
   const submittedCount = clues.filter((c) => alive.some((p) => p.id === c.player_id)).length
+  const blind = room.settings?.blindMode ?? false
+  const allIn = submittedCount >= alive.length
+  // Mode caché : les indices ne se révèlent que lorsque TOUT le monde a joué.
+  const revealed = blind ? allIn || !me.is_alive : !!mySubmitted || !me.is_alive
 
   async function handleSubmit() {
     if (!round || myClue.trim().length < 1) return
@@ -165,6 +189,7 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
   return (
     <div className="flex flex-col gap-4">
       <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.id} startedAt={round.phase_started_at} />
+      <ClueAngleBanner round={round} room={room} />
       <div className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-4 py-3 ring-1 ring-white/10">
         <span className="text-sm font-bold text-slate-300">Mode à distance</span>
         <span className="text-sm text-slate-400">{submittedCount}/{alive.length} indices</span>
@@ -233,7 +258,9 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
 
       {!revealed && me.is_alive && (
         <p className="text-center text-xs text-slate-500">
-          Tu verras les indices des autres après avoir envoyé le tien.
+          {blind
+            ? 'Les indices seront révélés quand tout le monde aura joué.'
+            : 'Tu verras les indices des autres après avoir envoyé le tien.'}
         </p>
       )}
 
@@ -252,6 +279,7 @@ function VotingPhase({ state }: { state: RoomState }) {
   const [busy, setBusy] = useState(false)
   if (!me || !round || !room) return null
   const isRemote = room.settings?.remoteMode ?? false
+  const blind = room.settings?.blindMode ?? false
   const alive = players.filter((p) => p.is_alive)
   const myVote = votes.find((v) => v.voter_player_id === me.id)
   const tally = new Map<string, number>()
@@ -299,7 +327,7 @@ function VotingPhase({ state }: { state: RoomState }) {
               className={`flex items-center justify-between rounded-xl px-4 py-3 ring-1 transition active:scale-[0.99] disabled:opacity-40 ${isMine ? 'bg-rose-500/30 ring-rose-400' : 'bg-slate-800/60 ring-white/10'}`}
             >
               <span>{p.name}{p.id === me.id && ' (toi)'}</span>
-              <span className="text-sm text-slate-400">{count > 0 ? `${count} vote${count > 1 ? 's' : ''}` : ''}</span>
+              <span className="text-sm text-slate-400">{!blind && count > 0 ? `${count} vote${count > 1 ? 's' : ''}` : ''}</span>
             </button>
           )
         })}
@@ -422,33 +450,45 @@ function Results({ state }: { state: RoomState }) {
   useEffect(() => {
     if (!roundId) return
     let active = true
+    const cols = 'player_id, role, word' + (room?.settings?.enableBinome ? ', partner_player_id' : '')
     supabase
       .from('round_roles')
-      .select('player_id, role, word')
+      .select(cols)
       .eq('round_id', roundId)
-      .then(({ data }) => { if (active) setRoles((data as RevealedRole[]) ?? []) })
+      .then(({ data }) => { if (active) setRoles((data as unknown as RevealedRole[]) ?? []) })
     return () => { active = false }
-  }, [roundId])
+  }, [roundId, room?.settings?.enableBinome])
 
   if (!me || !round || !room) return null
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '—'
-  const scoreboard = [...players].sort((a, b) => b.score - a.score)
+
+  const enableBinome = room.settings?.enableBinome ?? false
+  const scoreOf = (id: string) => players.find((p) => p.id === id)?.score ?? 0
+  const partnerOf: Record<string, string> = {}
+  for (const r of roles) if (r.partner_player_id) partnerOf[r.player_id] = r.partner_player_id
+
+  // Classement par duo (mode Binôme) ou par joueur.
+  const groups = enableBinome
+    ? duoGroups(players.map((p) => p.id), partnerOf)
+    : players.map((p) => [p.id])
+  const ranked = groups
+    .map((ids) => ({ ids, total: ids.reduce((sum, id) => sum + scoreOf(id), 0) }))
+    .sort((a, b) => b.total - a.total)
+  const groupLabel = (ids: string[]) => ids.map(nameOf).join(' & ')
 
   const targetScore = room.settings?.targetScore ?? 0
-  const topScore = scoreboard[0]?.score ?? 0
+  const topTotal = ranked[0]?.total ?? 0
   const nightWinners =
-    targetScore > 0 && topScore >= targetScore
-      ? scoreboard.filter((p) => p.score === topScore)
-      : []
+    targetScore > 0 && topTotal >= targetScore ? ranked.filter((g) => g.total === topTotal) : []
 
   return (
     <div className="flex flex-col gap-4">
       {nightWinners.length > 0 && (
         <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
           <p className="mt-1 text-xl font-black text-amber-300">
-            {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
+            {nightWinners.map((g) => groupLabel(g.ids)).join(' · ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
           </p>
-          <p className="mt-1 text-sm text-slate-300">{topScore} points atteints (objectif : {targetScore}).</p>
+          <p className="mt-1 text-sm text-slate-300">{topTotal} points atteints (objectif : {targetScore}).</p>
         </div>
       )}
       <div className="rounded-2xl bg-slate-800/80 p-5 text-center ring-1 ring-white/10">
@@ -472,12 +512,12 @@ function Results({ state }: { state: RoomState }) {
       </div>
 
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
-        <h3 className="mb-2 text-sm font-bold text-slate-300">Scores</h3>
+        <h3 className="mb-2 text-sm font-bold text-slate-300">{enableBinome ? 'Scores (par binôme)' : 'Scores'}</h3>
         <ul className="flex flex-col gap-1">
-          {scoreboard.map((p) => (
-            <li key={p.id} className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2">
-              <span>{p.name}</span>
-              <b>{p.score}</b>
+          {ranked.map((g) => (
+            <li key={g.ids.join('-')} className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2">
+              <span>{groupLabel(g.ids)}</span>
+              <b>{g.total}</b>
             </li>
           ))}
         </ul>

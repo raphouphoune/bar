@@ -214,9 +214,13 @@ function pairKey(a: string, b: string): string {
  * Tire une paire selon le pack choisi ('conceptnet' = tirage en direct).
  * `exclude` : clés de paires déjà vues dans la partie, pour éviter les doublons.
  */
-export async function getWordPair(packId?: string, exclude: string[] = []): Promise<WordPair> {
+export async function getWordPair(
+  packId?: string,
+  exclude: string[] = [],
+  customPairs: [string, string][] = [],
+): Promise<WordPair> {
   if (!packId || packId === 'conceptnet') return generateWordPair()
-  const pack = PACKS[packId]
+  const pack = packId === 'perso' ? customPairs : PACKS[packId]
   if (!pack || pack.length === 0) return generateWordPair()
   const seen = new Set(exclude)
   let available = pack.filter(([a, b]) => !seen.has(pairKey(a, b)))

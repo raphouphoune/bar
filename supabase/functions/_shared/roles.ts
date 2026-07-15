@@ -12,6 +12,7 @@ export interface Settings {
   enableMercenaire: boolean
   enableTraitre: boolean
   enableParrain: boolean
+  enableComplices?: boolean
 }
 
 export interface Assignment {
@@ -93,6 +94,16 @@ export function assignRoles(
       merc.role = 'mercenaire'
       const others = assignments.filter((a) => a.playerId !== merc.playerId)
       merc.knowsPlayerId = shuffle(others)[0].playerId
+    }
+  }
+
+  // Complices : les undercovers (et le Parrain) se reconnaissent (anneau).
+  if (s.enableComplices) {
+    const team = assignments.filter((a) => a.role === 'undercover' || a.role === 'parrain')
+    if (team.length >= 2) {
+      for (let i = 0; i < team.length; i++) {
+        team[i].knowsPlayerId = team[(i + 1) % team.length].playerId
+      }
     }
   }
 

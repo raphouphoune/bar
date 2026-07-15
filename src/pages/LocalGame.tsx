@@ -12,10 +12,14 @@ import {
   pointsFor,
   normalizeWord,
   shuffle,
+  clueAngle,
+  pairPlayers,
+  duoGroups,
   ROLE_COLOR,
   WINNER_LABELS,
   pickGage,
 } from '../lib/engine'
+import CustomPairsEditor from '../components/CustomPairsEditor'
 
 type Phase = 'setup' | 'revealing' | 'clue' | 'voting' | 'vote_result' | 'mr_white_guess' | 'manche_over'
 
@@ -28,6 +32,8 @@ interface Player {
   word: string | null
   taupeKnows: string | null
   mercenaireTarget: string | null
+  complice: string | null
+  partner: string | null
 }
 
 interface Settings {
@@ -38,10 +44,14 @@ interface Settings {
   enableMercenaire: boolean
   enableTraitre: boolean
   enableParrain: boolean
+  enableComplices: boolean
+  enableClueAngles: boolean
+  enableBinome: boolean
   targetScore: number
   timerSeconds: number
   wordPack: string
   enableGages: boolean
+  customPairs: [string, string][]
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -52,10 +62,14 @@ const DEFAULT_SETTINGS: Settings = {
   enableMercenaire: false,
   enableTraitre: false,
   enableParrain: false,
+  enableComplices: false,
+  enableClueAngles: false,
+  enableBinome: false,
   targetScore: 0,
   timerSeconds: 0,
   wordPack: 'classique',
   enableGages: false,
+  customPairs: [],
 }
 
 /** Réglages conseillés selon le nombre de joueurs. */
@@ -109,7 +123,16 @@ function settingsError(s: Settings, n: number): string | null {
   return null
 }
 
-type ToggleKey = 'enableMrWhite' | 'enableKamikaze' | 'enableTaupe' | 'enableMercenaire' | 'enableTraitre' | 'enableParrain'
+type ToggleKey =
+  | 'enableMrWhite'
+  | 'enableKamikaze'
+  | 'enableTaupe'
+  | 'enableMercenaire'
+  | 'enableTraitre'
+  | 'enableParrain'
+  | 'enableComplices'
+  | 'enableClueAngles'
+  | 'enableBinome'
 const TOGGLES: [ToggleKey, string, string][] = [
   ['enableMrWhite', 'Mr White', 'sans mot, doit bluffer puis deviner'],
   ['enableKamikaze', 'Kamikaze', "gagne s'il se fait éliminer avant les undercovers"],
@@ -117,6 +140,9 @@ const TOGGLES: [ToggleKey, string, string][] = [
   ['enableMercenaire', 'Le Mercenaire', 'gagne si sa cible secrète est éliminée'],
   ['enableTraitre', 'Le Traître', 'civil qui gagne avec les undercovers (sans les connaître)'],
   ['enableParrain', 'Le Parrain', "undercover révélé comme Civil à l'élimination"],
+  ['enableComplices', 'Les Complices', 'les undercovers se connaissent (dès 2 undercovers)'],
+  ['enableClueAngles', 'Indices guidés', "l'app impose le type d'indice à chaque manche"],
+  ['enableBinome', 'Binôme', 'chaque joueur a un partenaire secret, scores par duo'],
 ]
 
 const card = 'rounded-2xl bg-slate-800/60 p-5 ring-1 ring-white/10'
@@ -144,6 +170,8 @@ export default function LocalGame() {
   // Anti-répétition : clés des paires déjà tirées, par thème (mode « sac »).
   const [wordBag, setWordBag] = useState<Record<string, string[]>>({})
   const [generating, setGenerating] = useState(false)
+  // Binôme : partenaires secrets, stables sur la partie.
+  const [partners, setPartners] = useState<Record<string, string>>({})
 
   const nameOf = (id: string | null) => players.find((p) => p.id === id)?.name ?? '—'
 
@@ -164,7 +192,7 @@ export default function LocalGame() {
     if (n.length < 2 || players.some((p) => p.name.toLowerCase() === n.toLowerCase())) return
     setPlayers((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name: n, isAlive: true, score: 0, role: null, word: null, taupeKnows: null, mercenaireTarget: null },
+      { id: crypto.randomUUID(), name: n, isAlive: true, score: 0, role: null, word: null, taupeKnows: null, mercenaireTarget: null, complice: null, partner: null },
     ])
     setNameInput('')
   }
@@ -180,14 +208,27 @@ export default function LocalGame() {
         word: null as string | null,
         taupeKnows: null as string | null,
         mercenaireTarget: null as string | null,
+        complice: null as string | null,
+        partner: null as string | null,
       }))
+
+      // Binôme : duos stables sur la partie (on réutilise tant qu'ils couvrent tout le monde).
+      let nextPartners: Record<string, string> = {}
+      if (settings.enableBinome) {
+        const ids = base.map((p) => p.id)
+        const valid =
+          Object.keys(partners).length >= ids.length - 1 &&
+          Object.entries(partners).every(([a, b]) => ids.includes(a) && ids.includes(b))
+        nextPartners = valid ? partners : pairPlayers(ids)
+        setPartners(nextPartners)
+      }
 
       // Mystère = génération en ligne ; sinon tirage sans répétition dans le thème.
       let words: { civil: string; undercover: string }
       if (settings.wordPack === 'conceptnet') {
         words = await generateLivePair()
       } else {
-        const draw = drawFromPack(settings.wordPack, wordBag[settings.wordPack] ?? [])
+        const draw = drawFromPack(settings.wordPack, wordBag[settings.wordPack] ?? [], settings.customPairs)
         words = draw.pair
         setWordBag((bag) => ({ ...bag, [settings.wordPack]: draw.used }))
       }
@@ -203,6 +244,8 @@ export default function LocalGame() {
           word: wordForRole(a.role, words),
           taupeKnows: a.role === 'taupe' ? a.knowsPlayerId : null,
           mercenaireTarget: a.role === 'mercenaire' ? a.knowsPlayerId : null,
+          complice: a.role === 'undercover' || a.role === 'parrain' ? a.knowsPlayerId : null,
+          partner: nextPartners[p.id] ?? null,
         }
       })
       setPlayers(assigned)
@@ -314,7 +357,11 @@ export default function LocalGame() {
 
   // ---- Setup ----
   if (phase === 'setup') {
-    const err = settingsError(settings, players.length)
+    const err =
+      settingsError(settings, players.length) ??
+      (settings.wordPack === 'perso' && settings.customPairs.length === 0
+        ? 'Ajoute au moins une paire de mots perso.'
+        : null)
     return (
       <div className="mx-auto flex min-h-full max-w-md flex-col gap-5 p-4">
         <header className="text-center">
@@ -437,6 +484,12 @@ export default function LocalGame() {
             « Mystère » génère des mots à l'infini (connexion requise) ; les thèmes
             évitent de répéter deux fois la même paire.
           </p>
+          {settings.wordPack === 'perso' && (
+            <CustomPairsEditor
+              pairs={settings.customPairs}
+              onChange={(customPairs) => setSettings((s) => ({ ...s, customPairs }))}
+            />
+          )}
 
           <button
             onClick={() => setSettings((s) => ({ ...s, enableGages: !s.enableGages }))}
@@ -560,6 +613,16 @@ export default function LocalGame() {
                   Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.
                 </p>
               )}
+              {current.complice && (
+                <p className="text-sm text-rose-300">
+                  Complice : <b>{nameOf(current.complice)}</b>
+                </p>
+              )}
+              {current.partner && (
+                <p className="text-sm text-cyan-300">
+                  Binôme : <b>{nameOf(current.partner)}</b>
+                </p>
+              )}
             </div>
             <button
               onClick={() => {
@@ -663,6 +726,16 @@ export default function LocalGame() {
                   Tu es le Parrain. Si tu es éliminé, tu seras révélé comme Civil.
                 </p>
               )}
+              {reviewPlayer!.complice && (
+                <p className="text-sm text-rose-300">
+                  Complice : <b>{nameOf(reviewPlayer!.complice)}</b>
+                </p>
+              )}
+              {reviewPlayer!.partner && (
+                <p className="text-sm text-cyan-300">
+                  Binôme : <b>{nameOf(reviewPlayer!.partner)}</b>
+                </p>
+              )}
             </div>
             <button
               onClick={closeReview}
@@ -686,6 +759,12 @@ export default function LocalGame() {
           <p className="mt-1 text-sm text-slate-400">Manche {manche}</p>
         </header>
         <Timer seconds={settings.timerSeconds} resetKey={manche} />
+        {settings.enableClueAngles && (
+          <div className="rounded-2xl bg-indigo-500/15 p-3 text-center ring-1 ring-indigo-400/30">
+            <p className="text-xs uppercase tracking-widest text-indigo-300">Ton indice doit être…</p>
+            <p className="text-lg font-bold text-indigo-100">{clueAngle(manche)}</p>
+          </div>
+        )}
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold text-slate-300">Ordre de parole</h3>
           <ol className="flex flex-col gap-1">
@@ -856,7 +935,6 @@ export default function LocalGame() {
 
   // ---- Manche over ----
   if (phase === 'manche_over') {
-    const scoreboard = [...players].sort((a, b) => b.score - a.score)
     const taupe = players.find((p) => p.role === 'taupe')
     const taupeTarget = taupe?.taupeKnows ? players.find((p) => p.id === taupe.taupeKnows) : null
     const taupeWon = winner === 'undercover' && taupeTarget?.isAlive === true
@@ -865,17 +943,27 @@ export default function LocalGame() {
     const mercWon = mercTarget != null && !mercTarget.isAlive
     const traitre = players.find((p) => p.role === 'traitre')
     const traitreWon = winner === 'undercover'
-    const topScore = scoreboard[0]?.score ?? 0
+
+    // Classement par duo (mode Binôme) ou par joueur.
+    const scoreOf = (id: string) => players.find((p) => p.id === id)?.score ?? 0
+    const groups = settings.enableBinome
+      ? duoGroups(players.map((p) => p.id), partners)
+      : players.map((p) => [p.id])
+    const ranked = groups
+      .map((ids) => ({ ids, total: ids.reduce((sum, id) => sum + scoreOf(id), 0) }))
+      .sort((a, b) => b.total - a.total)
+    const groupLabel = (ids: string[]) => ids.map((id) => nameOf(id)).join(' & ')
+    const topScore = ranked[0]?.total ?? 0
     const nightWinners =
       settings.targetScore > 0 && topScore >= settings.targetScore
-        ? scoreboard.filter((p) => p.score === topScore)
+        ? ranked.filter((g) => g.total === topScore)
         : []
     return (
       <div className="mx-auto flex min-h-full max-w-md flex-col gap-5 p-4">
         {nightWinners.length > 0 && (
           <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
             <p className="mt-1 text-xl font-black text-amber-300">
-              {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
+              {nightWinners.map((g) => groupLabel(g.ids)).join(' · ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
             </p>
             <p className="mt-1 text-sm text-slate-300">{topScore} points atteints (objectif : {settings.targetScore}).</p>
           </div>
@@ -933,17 +1021,17 @@ export default function LocalGame() {
         </div>
 
         <div className={card}>
-          <h3 className="mb-2 text-sm font-bold text-slate-300">Scores</h3>
+          <h3 className="mb-2 text-sm font-bold text-slate-300">
+            {settings.enableBinome ? 'Scores (par binôme)' : 'Scores'}
+          </h3>
           <ul className="flex flex-col gap-1">
-            {scoreboard.map((p) => (
+            {ranked.map((g) => (
               <li
-                key={p.id}
+                key={g.ids.join('-')}
                 className="flex items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2"
               >
-                <span>
-                  {p.name}
-                </span>
-                <b>{p.score}</b>
+                <span>{groupLabel(g.ids)}</span>
+                <b>{g.total}</b>
               </li>
             ))}
           </ul>
@@ -958,6 +1046,7 @@ export default function LocalGame() {
         <button
           onClick={() => {
             setPlayers((prev) => prev.map((p) => ({ ...p, score: 0 })))
+            setPartners({}) // nouvelle partie → nouveaux binômes
             setPhase('setup')
           }}
           className="text-center text-sm text-slate-500 underline"

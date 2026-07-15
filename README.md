@@ -43,7 +43,8 @@ npm run dev
 ### 1. Projet Supabase
 1. Crée un projet sur [supabase.com](https://supabase.com) (plan gratuit).
 2. **SQL Editor** → exécute **dans l'ordre** le contenu de :
-   `supabase/migrations/0001_init.sql`, puis `0002_clues.sql`, puis `0003_settings_timer_gages.sql`.
+   `0001_init.sql`, `0002_clues.sql`, `0003_settings_timer_gages.sql`, puis
+   `0004_binome.sql` (ce dernier n'est requis que pour le mode Binôme).
 3. **Authentication → Sign In / Providers → Anonymous** : active les connexions anonymes.
 4. Note dans **Project Settings → API** : l'`URL` et la clé `anon public`.
 

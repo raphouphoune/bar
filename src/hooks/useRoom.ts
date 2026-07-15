@@ -71,12 +71,15 @@ export function useRoom(code: string): RoomState {
 
       if (currentRound) {
         // Mon rôle (RLS : ne renvoie que ma ligne)
+        const roleCols =
+          'round_id, player_id, role, word, knows_player_id' +
+          (roomRow.settings?.enableBinome ? ', partner_player_id' : '')
         const { data: mine } = await supabase
           .from('round_roles')
-          .select('round_id, player_id, role, word, knows_player_id')
+          .select(roleCols)
           .eq('round_id', currentRound.id)
           .maybeSingle()
-        setMyRole((mine as MyRole) ?? null)
+        setMyRole((mine as unknown as MyRole) ?? null)
 
         const { data: vts } = await supabase
           .from('votes')

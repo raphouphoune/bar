@@ -4,6 +4,7 @@ import type { RoomState } from '../hooks/useRoom'
 import type { RoomSettings } from '../lib/types'
 import { ONLINE_WORD_PACKS } from '../lib/types'
 import { updateSettings, startRound, leaveRoom } from '../lib/api'
+import CustomPairsEditor from './CustomPairsEditor'
 import { settingsValid, impostorCount, suggestedSettings } from '../lib/game'
 
 function formatTimer(v: number): string {
@@ -32,7 +33,11 @@ export default function Lobby({ state }: { state: RoomState }) {
     }
   }
 
-  const validation = settingsValid(s, players.length)
+  const validation =
+    settingsValid(s, players.length) ??
+    (s.wordPack === 'perso' && (s.customPairs?.length ?? 0) === 0
+      ? 'Ajoute au moins une paire de mots perso.'
+      : null)
 
   async function handleStart() {
     if (!room) return
@@ -103,8 +108,12 @@ export default function Lobby({ state }: { state: RoomState }) {
         <Toggle label="Le Mercenaire" hint="civil neutre — gagne si sa cible secrète est éliminée" checked={s.enableMercenaire} disabled={!isHost} onChange={(v) => patch({ enableMercenaire: v })} />
         <Toggle label="Le Traître" hint="civil qui gagne avec les undercovers (sans les connaître)" checked={s.enableTraitre} disabled={!isHost} onChange={(v) => patch({ enableTraitre: v })} />
         <Toggle label="Le Parrain" hint="undercover révélé comme Civil à l'élimination" checked={s.enableParrain} disabled={!isHost} onChange={(v) => patch({ enableParrain: v })} />
+        <Toggle label="Les Complices" hint="les undercovers se connaissent (dès 2 undercovers)" checked={s.enableComplices ?? false} disabled={!isHost} onChange={(v) => patch({ enableComplices: v })} />
         <div className="my-2 h-px bg-white/10" />
         <Toggle label="Mode à distance" hint="les joueurs tapent leurs indices dans l'app (jeu en ligne)" checked={s.remoteMode ?? false} disabled={!isHost} onChange={(v) => patch({ remoteMode: v })} />
+        <Toggle label="Indices simultanés" hint="indices révélés d'un coup + votes cachés (mode à distance)" checked={s.blindMode ?? false} disabled={!isHost} onChange={(v) => patch({ blindMode: v })} />
+        <Toggle label="Indices guidés" hint="l'app impose le type d'indice à chaque manche" checked={s.enableClueAngles ?? false} disabled={!isHost} onChange={(v) => patch({ enableClueAngles: v })} />
+        <Toggle label="Binôme" hint="chaque joueur a un partenaire secret, scores par duo" checked={s.enableBinome ?? false} disabled={!isHost} onChange={(v) => patch({ enableBinome: v })} />
         <Toggle label="Gages" hint="le joueur éliminé pioche un gage" checked={s.enableGages ?? false} disabled={!isHost} onChange={(v) => patch({ enableGages: v })} />
         <div className="my-2 h-px bg-white/10" />
         <p className="mb-2 text-sm">Thème des mots</p>
@@ -124,9 +133,18 @@ export default function Lobby({ state }: { state: RoomState }) {
             </button>
           ))}
         </div>
-        <p className="mb-2 text-xs text-slate-500">
-          « Mystère » génère les mots automatiquement : personne, même l'hôte, ne les connaît à l'avance.
-        </p>
+        {(s.wordPack ?? 'conceptnet') === 'conceptnet' && (
+          <p className="mb-2 text-xs text-slate-500">
+            « Mystère » génère les mots automatiquement : personne, même l'hôte, ne les connaît à l'avance.
+          </p>
+        )}
+        {s.wordPack === 'perso' && (
+          <CustomPairsEditor
+            pairs={s.customPairs ?? []}
+            disabled={!isHost}
+            onChange={(customPairs) => patch({ customPairs })}
+          />
+        )}
         <div className="my-2 h-px bg-white/10" />
         <Stepper
           label="Score cible (soirée)"
