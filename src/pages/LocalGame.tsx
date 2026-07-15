@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Timer from '../components/Timer'
 import type { Role, WinnerTeam } from '../lib/types'
-import { ROLE_LABELS } from '../lib/types'
+import { ROLE_LABELS, ONLINE_WORD_PACKS } from '../lib/types'
 import {
   assignRoles as assignEngineRoles,
   checkWinner as engineCheckWinner,
-  pickWordPair,
+  drawFromPack,
+  generateLivePair,
   wordForRole,
   pointsFor,
   normalizeWord,
   shuffle,
-  WORD_PACKS,
   ROLE_COLOR,
   WINNER_LABELS,
   pickGage,
@@ -141,6 +141,9 @@ export default function LocalGame() {
   const [reviewPlayerId, setReviewPlayerId] = useState<string | null>(null)
   const [reviewWordShown, setReviewWordShown] = useState(false)
   const [gage, setGage] = useState<string | null>(null)
+  // Anti-répétition : clés des paires déjà tirées, par thème (mode « sac »).
+  const [wordBag, setWordBag] = useState<Record<string, string[]>>({})
+  const [generating, setGenerating] = useState(false)
 
   const nameOf = (id: string | null) => players.find((p) => p.id === id)?.name ?? '—'
 
@@ -166,42 +169,57 @@ export default function LocalGame() {
     setNameInput('')
   }
 
-  function startGame(basePlayers: Player[], resetScores = false) {
-    const base = basePlayers.map((p) => ({
-      ...p,
-      score: resetScores ? 0 : p.score,
-      isAlive: true,
-      role: null as Role | null,
-      word: null as string | null,
-      taupeKnows: null as string | null,
-      mercenaireTarget: null as string | null,
-    }))
-    const words = pickWordPair(settings.wordPack)
-    setCivilWord(words.civil)
-    setUndercoverWord(words.undercover)
-    const byId = new Map(assignEngineRoles(base.map((p) => p.id), settings).map((a) => [a.playerId, a]))
-    const assigned: Player[] = base.map((p) => {
-      const a = byId.get(p.id)!
-      return {
+  async function startGame(basePlayers: Player[], resetScores = false) {
+    setGenerating(true)
+    try {
+      const base = basePlayers.map((p) => ({
         ...p,
-        role: a.role,
-        word: wordForRole(a.role, words),
-        taupeKnows: a.role === 'taupe' ? a.knowsPlayerId : null,
-        mercenaireTarget: a.role === 'mercenaire' ? a.knowsPlayerId : null,
+        score: resetScores ? 0 : p.score,
+        isAlive: true,
+        role: null as Role | null,
+        word: null as string | null,
+        taupeKnows: null as string | null,
+        mercenaireTarget: null as string | null,
+      }))
+
+      // Mystère = génération en ligne ; sinon tirage sans répétition dans le thème.
+      let words: { civil: string; undercover: string }
+      if (settings.wordPack === 'conceptnet') {
+        words = await generateLivePair()
+      } else {
+        const draw = drawFromPack(settings.wordPack, wordBag[settings.wordPack] ?? [])
+        words = draw.pair
+        setWordBag((bag) => ({ ...bag, [settings.wordPack]: draw.used }))
       }
-    })
-    setPlayers(assigned)
-    const order = shuffle(assigned.filter((p) => p.isAlive)).map((p) => p.id)
-    setTurnOrder(order)
-    setRevealIndex(0)
-    setWordShown(false)
-    setEliminatedId(null)
-    setWinner(null)
-    setMrGuess('')
-    setSelectedVote(null)
-    setGage(null)
-    setManche((m) => m + 1)
-    setPhase('revealing')
+
+      setCivilWord(words.civil)
+      setUndercoverWord(words.undercover)
+      const byId = new Map(assignEngineRoles(base.map((p) => p.id), settings).map((a) => [a.playerId, a]))
+      const assigned: Player[] = base.map((p) => {
+        const a = byId.get(p.id)!
+        return {
+          ...p,
+          role: a.role,
+          word: wordForRole(a.role, words),
+          taupeKnows: a.role === 'taupe' ? a.knowsPlayerId : null,
+          mercenaireTarget: a.role === 'mercenaire' ? a.knowsPlayerId : null,
+        }
+      })
+      setPlayers(assigned)
+      const order = shuffle(assigned.filter((p) => p.isAlive)).map((p) => p.id)
+      setTurnOrder(order)
+      setRevealIndex(0)
+      setWordShown(false)
+      setEliminatedId(null)
+      setWinner(null)
+      setMrGuess('')
+      setSelectedVote(null)
+      setGage(null)
+      setManche((m) => m + 1)
+      setPhase('revealing')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   function handleEliminate() {
@@ -282,6 +300,16 @@ export default function LocalGame() {
       setTurnOrder((prev) => prev.filter((id) => id !== eliminatedId))
       setPhase('clue')
     }
+  }
+
+  // ---- Préparation de la manche (génération des mots) ----
+  if (generating) {
+    return (
+      <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-rose-500" />
+        <p className="text-slate-400">Préparation de la manche…</p>
+      </div>
+    )
   }
 
   // ---- Setup ----
@@ -390,8 +418,8 @@ export default function LocalGame() {
           <div className="my-3 h-px bg-white/10" />
 
           <p className="mb-2 text-sm">Thème des mots</p>
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            {WORD_PACKS.map((pack) => (
+          <div className="mb-1 grid grid-cols-2 gap-2">
+            {ONLINE_WORD_PACKS.map((pack) => (
               <button
                 key={pack.id}
                 onClick={() => setSettings((s) => ({ ...s, wordPack: pack.id }))}
@@ -405,6 +433,10 @@ export default function LocalGame() {
               </button>
             ))}
           </div>
+          <p className="mb-3 text-xs text-slate-500">
+            « Mystère » génère des mots à l'infini (connexion requise) ; les thèmes
+            évitent de répéter deux fois la même paire.
+          </p>
 
           <button
             onClick={() => setSettings((s) => ({ ...s, enableGages: !s.enableGages }))}

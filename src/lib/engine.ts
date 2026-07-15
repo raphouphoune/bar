@@ -222,8 +222,27 @@ export const WORD_PACKS: WordPack[] = [
       ['fraise', 'cerise'], ['orange', 'mandarine'], ['lapin', 'lièvre'],
       ['ski', 'surf'], ['kayak', 'canoë'], ['église', 'cathédrale'],
       ['boulanger', 'pâtissier'], ['professeur', 'instituteur'],
-      ['perroquet', 'corbeau'], ['loup', 'renard'], ['épée', 'lance'],
-      ['cinéma', 'théâtre'], ['usine', 'atelier'], ['marché', 'supermarché'],
+      ['loup', 'renard'], ['épée', 'lance'], ['cinéma', 'théâtre'],
+      ['usine', 'atelier'], ['marché', 'supermarché'], ['pomme', 'poire'],
+      ['canapé', 'fauteuil'], ['verre', 'tasse'], ['ordinateur', 'tablette'],
+      ['montre', 'horloge'], ['casquette', 'chapeau'], ['parapluie', 'parasol'],
+      ['abeille', 'guêpe'], ['crocodile', 'alligator'], ['tortue', 'escargot'],
+      ['papillon', 'libellule'], ['dauphin', 'baleine'], ['camion', 'fourgon'],
+      ['train', 'métro'], ['bateau', 'voilier'], ['fusée', 'navette'],
+      ['docteur', 'vétérinaire'], ['avocat', 'notaire'], ['pompier', 'policier'],
+      ['jardin', 'parc'], ['forêt', 'jungle'], ['pont', 'tunnel'],
+      ['statue', 'monument'], ['tableau', 'fresque'], ['roman', 'poème'],
+      ['journal', 'magazine'], ['radio', 'podcast'], ['réveil', 'minuteur'],
+      ['oreiller', 'coussin'], ['couverture', 'plaid'], ['tapis', 'moquette'],
+      ['rideau', 'store'], ['miroir', 'vitre'], ['clé', 'cadenas'],
+      ['marteau', 'maillet'], ['pinceau', 'rouleau'], ['ciseaux', 'cutter'],
+      ['ampoule', 'néon'], ['aimant', 'boussole'], ['planète', 'étoile'],
+      ['comète', 'météore'], ['volcan', 'geyser'], ['cascade', 'torrent'],
+      ['dune', 'falaise'], ['glacier', 'iceberg'], ['soupe', 'potage'],
+      ['gâteau', 'muffin'], ['confiture', 'miel'], ['beurre', 'margarine'],
+      ['citron', 'pamplemousse'], ['pêche', 'abricot'], ['carotte', 'navet'],
+      ['tomate', 'poivron'], ['ballon', 'bulle'], ['flûte', 'clarinette'],
+      ['trompette', 'saxophone'], ['tambour', 'timbale'], ['dé', 'jeton'],
     ],
   },
   {
@@ -236,6 +255,15 @@ export const WORD_PACKS: WordPack[] = [
       ['barman', 'serveur'], ['comptoir', 'terrasse'], ['tireuse', 'bouteille'],
       ['shooter', 'cocktail'], ['gueule de bois', 'migraine'], ['apéro', 'digestif'],
       ['cidre', 'kir'], ['limonade', 'soda'], ['café', 'thé'], ['tournée', 'addition'],
+      ['sangria', 'punch'], ['spritz', 'americano'], ['porto', 'vermouth'],
+      ['cointreau', 'limoncello'], ['bière blonde', 'bière brune'], ['demi', 'galopin'],
+      ['fût', 'canette'], ['décapsuleur', 'tire-bouchon'], ['olives', 'cornichons'],
+      ['planche', 'tapas'], ['arachides', 'pistaches'], ['jus', 'nectar'],
+      ['eau plate', 'eau gazeuse'], ['sirop', 'grenadine'], ['expresso', 'ristretto'],
+      ['zinc', 'tabouret'], ['pichet', 'carafe'], ['cocktail', 'mocktail'],
+      ['absinthe', 'génépi'], ['saké', 'soju'], ['hydromel', 'poiré'],
+      ['bière pression', 'bière bouteille'], ['bloody mary', 'caïpirinha'],
+      ['sous-verre', 'nappe'], ['pichet', 'chope'],
     ],
   },
   {
@@ -248,6 +276,15 @@ export const WORD_PACKS: WordPack[] = [
       ['Goku', 'Vegeta'], ['Simpson', 'Griffin'], ['Netflix', 'Youtube'],
       ['TikTok', 'Instagram'], ['PlayStation', 'Xbox'], ['Marvel', 'DC'],
       ['Star Wars', 'Star Trek'], ['Pokémon', 'Digimon'], ['Minecraft', 'Fortnite'],
+      ['Spiderman', 'Daredevil'], ['Hulk', 'Thor'], ['Joker', 'Bane'],
+      ['Sonic', 'Crash'], ['Kirby', 'Yoshi'], ['Pac-Man', 'Tetris'],
+      ['Mickey', 'Donald'], ['Astérix', 'Obélix'], ['Tintin', 'Spirou'],
+      ['Frodon', 'Bilbon'], ['Hermione', 'Katniss'], ['Dumbledore', 'Gandalf'],
+      ['Nemo', 'Dory'], ['Woody', 'Buzz'], ['Elsa', 'Anna'],
+      ['Aladdin', 'Jasmine'], ['Simba', 'Mufasa'], ['Stitch', 'Dragon'],
+      ['Lara Croft', 'Nathan Drake'], ['Ryu', 'Ken'], ['Kratos', 'Aloy'],
+      ['WhatsApp', 'Snapchat'], ['Spotify', 'Deezer'], ['Twitch', 'Discord'],
+      ['Apple', 'Samsung'], ['Windows', 'Linux'], ['Uber', 'Airbnb'],
     ],
   },
   {
@@ -259,15 +296,109 @@ export const WORD_PACKS: WordPack[] = [
       ['after', 'apéro'], ['boîte', 'bar'], ['playlist', 'ambiance'],
       ['smartphone', 'appli de rencontre'], ['tinder', 'instagram'],
       ['soirée pyjama', 'boum'], ['karaoké', 'blind test'], ['gage', 'défi'],
+      ['match', 'like'], ['swipe', 'scroll'], ['story', 'post'],
+      ['followers', 'abonnés'], ['live', 'replay'], ['filtre', 'montage'],
+      ['hashtag', 'légende'], ['slow', 'rock'], ['confettis', 'guirlande'],
+      ['videur', 'hôtesse'], ['vestiaire', 'fumoir'], ['enceinte', 'platine'],
+      ['gobelet', 'paille'], ['before', 'afterwork'], ['brunch', 'goûter'],
+      ['covoiturage', 'taxi'], ['anniversaire', 'crémaillère'], ['nouvel an', 'réveillon'],
+      ['saint-valentin', 'rendez-vous'], ['résolution', 'promesse'], ['préau', 'salle'],
     ],
   },
 ]
 
+const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+
+const coinFlip = (a: string, b: string): WordPair =>
+  Math.random() < 0.5 ? { civil: a, undercover: b } : { civil: b, undercover: a }
+
+/** Clé d'une paire, indépendante de l'ordre (pour l'anti-répétition). */
+export function pairKey(a: string, b: string): string {
+  return [a.toLowerCase(), b.toLowerCase()].sort().join('|')
+}
+
 /** Tire une paire dans un pack statique (mélange civil/undercover). */
 export function pickWordPair(packId: string): WordPair {
   const pack = WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]
-  const [a, b] = pack.pairs[Math.floor(Math.random() * pack.pairs.length)]
-  return Math.random() < 0.5 ? { civil: a, undercover: b } : { civil: b, undercover: a }
+  const [a, b] = rand(pack.pairs)
+  return coinFlip(a, b)
+}
+
+/**
+ * Tire une paire SANS répéter celles déjà vues (`used` = liste de clés).
+ * Quand toutes les paires du pack ont été tirées, le sac se réinitialise.
+ * Renvoie la paire + la nouvelle liste de clés vues.
+ */
+export function drawFromPack(
+  packId: string,
+  used: string[] = [],
+): { pair: WordPair; used: string[] } {
+  const pack = WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]
+  const seen = new Set(used)
+  let available = pack.pairs.filter(([a, b]) => !seen.has(pairKey(a, b)))
+  let base = used
+  if (available.length === 0) {
+    available = pack.pairs // sac vidé → on recommence un tour
+    base = []
+  }
+  const [a, b] = rand(available)
+  return { pair: coinFlip(a, b), used: [...base, pairKey(a, b)] }
+}
+
+// ---- Mode « Mystère » : génération à la volée (base en ligne) ------------
+// Mêmes règles que l'Edge Function words.ts. Repli hors-ligne sur le vocabulaire
+// général du pack « Classique » si le réseau est indisponible.
+
+const ANCHORS: string[] = [
+  'chat', 'chien', 'café', 'thé', 'pomme', 'poire', 'vélo', 'voiture', 'train',
+  'avion', 'plage', 'montagne', 'rivière', 'forêt', 'soleil', 'lune', 'étoile',
+  'pluie', 'neige', 'guitare', 'piano', 'violon', 'tambour', 'football',
+  'tennis', 'natation', 'boxe', 'pizza', 'burger', 'pâtes', 'salade', 'fromage',
+  'vin', 'bière', 'médecin', 'professeur', 'avocat', 'pompier', 'policier',
+  'roi', 'reine', 'prince', 'sorcier', 'dragon', 'château', 'épée', 'bouclier',
+  'livre', 'journal', 'film', 'théâtre', 'musée', 'tableau', 'téléphone',
+  'ordinateur', 'horloge', 'lampe', 'chaise', 'table', 'lit', 'canapé', 'jardin',
+  'fleur', 'arbre', 'abeille', 'papillon', 'oiseau', 'poisson', 'requin',
+  'baleine', 'lion', 'tigre', 'éléphant', 'girafe', 'singe', 'serpent',
+  'araignée', 'hôpital', 'école', 'banque', 'restaurant', 'hôtel', 'aéroport',
+  'gare', 'plombier', 'boulanger', 'cuisinier', 'jardinier', 'peintre',
+  'acteur', 'pirate', 'robot', 'fantôme', 'vampire', 'sirène', 'fusée',
+  'planète', 'volcan', 'désert', 'océan', 'île', 'pont', 'phare', 'fontaine',
+  'parapluie', 'lunettes', 'chapeau', 'écharpe', 'montre', 'bague', 'collier',
+  'sac', 'valise', 'clé', 'marteau', 'tournevis', 'pinceau', 'crayon', 'ciseaux',
+  'bougie', 'miroir',
+]
+
+function cleanTerm(id: string): string {
+  return (id.split('/')[3] ?? '').replace(/_/g, ' ').trim()
+}
+
+function isUsable(term: string, anchor: string): boolean {
+  if (!term || term === anchor) return false
+  if (term.includes(' ')) return false
+  if (term.length < 3 || term.length > 14) return false
+  if (!/^[a-zàâäçéèêëîïôöùûüœ-]+$/i.test(term)) return false
+  if (term.startsWith(anchor.slice(0, 4)) && anchor.length >= 4) return false
+  return true
+}
+
+/** Génère une paire « Mystère ». Repli sur « Classique » si hors-ligne. */
+export async function generateLivePair(): Promise<WordPair> {
+  const anchor = rand(ANCHORS)
+  try {
+    const url = `https://api.conceptnet.io/related/c/fr/${encodeURIComponent(anchor)}?filter=/c/fr&limit=40`
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    if (!res.ok) throw new Error(String(res.status))
+    const data = (await res.json()) as { related?: { '@id': string; weight: number }[] }
+    const candidates = (data.related ?? [])
+      .map((e) => ({ term: cleanTerm(e['@id']), weight: e.weight }))
+      .filter((c) => c.weight >= 0.3 && c.weight <= 0.85)
+      .filter((c) => isUsable(c.term, anchor))
+    if (candidates.length > 0) return coinFlip(anchor, rand(candidates).term)
+  } catch {
+    /* réseau indisponible : repli hors-ligne */
+  }
+  return pickWordPair('classique')
 }
 
 // ---- Gages (mode bar) ----------------------------------------------------

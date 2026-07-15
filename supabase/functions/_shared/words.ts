@@ -111,9 +111,9 @@ function coinFlip(a: string, b: string): WordPair {
 }
 
 // =========================================================================
-//  Packs de mots statiques (identiques au mode local). Le pack 'conceptnet'
-//  (défaut) tire les mots en direct ; les autres piochent dans une liste.
-//  ⚠️ Garder ces listes synchronisées avec src/pages/LocalGame.tsx
+//  Packs de mots statiques. Le pack 'conceptnet' (défaut) tire les mots en
+//  direct ; les autres piochent dans une liste.
+//  ⚠️ COPIE MIROIR de WORD_PACKS dans src/lib/engine.ts — garder synchronisé.
 // =========================================================================
 const PACKS: Record<string, [string, string][]> = {
   classique: [
@@ -133,8 +133,27 @@ const PACKS: Record<string, [string, string][]> = {
     ['fraise', 'cerise'], ['orange', 'mandarine'], ['lapin', 'lièvre'],
     ['ski', 'surf'], ['kayak', 'canoë'], ['église', 'cathédrale'],
     ['boulanger', 'pâtissier'], ['professeur', 'instituteur'],
-    ['perroquet', 'corbeau'], ['loup', 'renard'], ['épée', 'lance'],
-    ['cinéma', 'théâtre'], ['usine', 'atelier'], ['marché', 'supermarché'],
+    ['loup', 'renard'], ['épée', 'lance'], ['cinéma', 'théâtre'],
+    ['usine', 'atelier'], ['marché', 'supermarché'], ['pomme', 'poire'],
+    ['canapé', 'fauteuil'], ['verre', 'tasse'], ['ordinateur', 'tablette'],
+    ['montre', 'horloge'], ['casquette', 'chapeau'], ['parapluie', 'parasol'],
+    ['abeille', 'guêpe'], ['crocodile', 'alligator'], ['tortue', 'escargot'],
+    ['papillon', 'libellule'], ['dauphin', 'baleine'], ['camion', 'fourgon'],
+    ['train', 'métro'], ['bateau', 'voilier'], ['fusée', 'navette'],
+    ['docteur', 'vétérinaire'], ['avocat', 'notaire'], ['pompier', 'policier'],
+    ['jardin', 'parc'], ['forêt', 'jungle'], ['pont', 'tunnel'],
+    ['statue', 'monument'], ['tableau', 'fresque'], ['roman', 'poème'],
+    ['journal', 'magazine'], ['radio', 'podcast'], ['réveil', 'minuteur'],
+    ['oreiller', 'coussin'], ['couverture', 'plaid'], ['tapis', 'moquette'],
+    ['rideau', 'store'], ['miroir', 'vitre'], ['clé', 'cadenas'],
+    ['marteau', 'maillet'], ['pinceau', 'rouleau'], ['ciseaux', 'cutter'],
+    ['ampoule', 'néon'], ['aimant', 'boussole'], ['planète', 'étoile'],
+    ['comète', 'météore'], ['volcan', 'geyser'], ['cascade', 'torrent'],
+    ['dune', 'falaise'], ['glacier', 'iceberg'], ['soupe', 'potage'],
+    ['gâteau', 'muffin'], ['confiture', 'miel'], ['beurre', 'margarine'],
+    ['citron', 'pamplemousse'], ['pêche', 'abricot'], ['carotte', 'navet'],
+    ['tomate', 'poivron'], ['ballon', 'bulle'], ['flûte', 'clarinette'],
+    ['trompette', 'saxophone'], ['tambour', 'timbale'], ['dé', 'jeton'],
   ],
   bar: [
     ['bière', 'vin'], ['mojito', 'margarita'], ['whisky', 'rhum'], ['vodka', 'gin'],
@@ -143,6 +162,15 @@ const PACKS: Record<string, [string, string][]> = {
     ['barman', 'serveur'], ['comptoir', 'terrasse'], ['tireuse', 'bouteille'],
     ['shooter', 'cocktail'], ['gueule de bois', 'migraine'], ['apéro', 'digestif'],
     ['cidre', 'kir'], ['limonade', 'soda'], ['café', 'thé'], ['tournée', 'addition'],
+    ['sangria', 'punch'], ['spritz', 'americano'], ['porto', 'vermouth'],
+    ['cointreau', 'limoncello'], ['bière blonde', 'bière brune'], ['demi', 'galopin'],
+    ['fût', 'canette'], ['décapsuleur', 'tire-bouchon'], ['olives', 'cornichons'],
+    ['planche', 'tapas'], ['arachides', 'pistaches'], ['jus', 'nectar'],
+    ['eau plate', 'eau gazeuse'], ['sirop', 'grenadine'], ['expresso', 'ristretto'],
+    ['zinc', 'tabouret'], ['pichet', 'carafe'], ['cocktail', 'mocktail'],
+    ['absinthe', 'génépi'], ['saké', 'soju'], ['hydromel', 'poiré'],
+    ['bière pression', 'bière bouteille'], ['bloody mary', 'caïpirinha'],
+    ['sous-verre', 'nappe'], ['pichet', 'chope'],
   ],
   pop: [
     ['Batman', 'Superman'], ['Mario', 'Luigi'], ['Pikachu', 'Salamèche'],
@@ -151,6 +179,15 @@ const PACKS: Record<string, [string, string][]> = {
     ['Goku', 'Vegeta'], ['Simpson', 'Griffin'], ['Netflix', 'Youtube'],
     ['TikTok', 'Instagram'], ['PlayStation', 'Xbox'], ['Marvel', 'DC'],
     ['Star Wars', 'Star Trek'], ['Pokémon', 'Digimon'], ['Minecraft', 'Fortnite'],
+    ['Spiderman', 'Daredevil'], ['Hulk', 'Thor'], ['Joker', 'Bane'],
+    ['Sonic', 'Crash'], ['Kirby', 'Yoshi'], ['Pac-Man', 'Tetris'],
+    ['Mickey', 'Donald'], ['Astérix', 'Obélix'], ['Tintin', 'Spirou'],
+    ['Frodon', 'Bilbon'], ['Hermione', 'Katniss'], ['Dumbledore', 'Gandalf'],
+    ['Nemo', 'Dory'], ['Woody', 'Buzz'], ['Elsa', 'Anna'],
+    ['Aladdin', 'Jasmine'], ['Simba', 'Mufasa'], ['Stitch', 'Dragon'],
+    ['Lara Croft', 'Nathan Drake'], ['Ryu', 'Ken'], ['Kratos', 'Aloy'],
+    ['WhatsApp', 'Snapchat'], ['Spotify', 'Deezer'], ['Twitch', 'Discord'],
+    ['Apple', 'Samsung'], ['Windows', 'Linux'], ['Uber', 'Airbnb'],
   ],
   soiree: [
     ['crush', 'date'], ['ex', 'plan'], ['selfie', 'story'], ['dancefloor', 'bar'],
@@ -158,14 +195,32 @@ const PACKS: Record<string, [string, string][]> = {
     ['after', 'apéro'], ['boîte', 'bar'], ['playlist', 'ambiance'],
     ['smartphone', 'appli de rencontre'], ['tinder', 'instagram'],
     ['soirée pyjama', 'boum'], ['karaoké', 'blind test'], ['gage', 'défi'],
+    ['match', 'like'], ['swipe', 'scroll'], ['story', 'post'],
+    ['followers', 'abonnés'], ['live', 'replay'], ['filtre', 'montage'],
+    ['hashtag', 'légende'], ['slow', 'rock'], ['confettis', 'guirlande'],
+    ['videur', 'hôtesse'], ['vestiaire', 'fumoir'], ['enceinte', 'platine'],
+    ['gobelet', 'paille'], ['before', 'afterwork'], ['brunch', 'goûter'],
+    ['covoiturage', 'taxi'], ['anniversaire', 'crémaillère'], ['nouvel an', 'réveillon'],
+    ['saint-valentin', 'rendez-vous'], ['résolution', 'promesse'], ['préau', 'salle'],
   ],
 }
 
-/** Tire une paire selon le pack choisi ('conceptnet' = tirage en direct). */
-export async function getWordPair(packId?: string): Promise<WordPair> {
+/** Clé d'une paire, indépendante de l'ordre (anti-répétition). */
+function pairKey(a: string, b: string): string {
+  return [a.toLowerCase(), b.toLowerCase()].sort().join('|')
+}
+
+/**
+ * Tire une paire selon le pack choisi ('conceptnet' = tirage en direct).
+ * `exclude` : clés de paires déjà vues dans la partie, pour éviter les doublons.
+ */
+export async function getWordPair(packId?: string, exclude: string[] = []): Promise<WordPair> {
   if (!packId || packId === 'conceptnet') return generateWordPair()
   const pack = PACKS[packId]
   if (!pack || pack.length === 0) return generateWordPair()
-  const [a, b] = pick(pack)
+  const seen = new Set(exclude)
+  let available = pack.filter(([a, b]) => !seen.has(pairKey(a, b)))
+  if (available.length === 0) available = pack // toutes vues → on recommence
+  const [a, b] = pick(available)
   return coinFlip(a, b)
 }

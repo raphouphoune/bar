@@ -63,7 +63,21 @@ Deno.serve(async (req) => {
 
     // 4. Rôles + mots
     const { assignments } = assignRoles(playerIds, settings)
-    const { civil, undercover } = await getWordPair(settings.wordPack)
+
+    // Anti-répétition : on exclut les paires déjà tirées dans cette room.
+    const { data: prevRounds } = await admin.from('rounds').select('id').eq('room_id', roomId)
+    const prevIds = (prevRounds ?? []).map((r) => r.id)
+    let exclude: string[] = []
+    if (prevIds.length > 0) {
+      const { data: secrets } = await admin
+        .from('round_secrets')
+        .select('civil_word, undercover_word')
+        .in('round_id', prevIds)
+      exclude = (secrets ?? []).map((s) =>
+        [String(s.civil_word).toLowerCase(), String(s.undercover_word).toLowerCase()].sort().join('|'),
+      )
+    }
+    const { civil, undercover } = await getWordPair(settings.wordPack, exclude)
     const firstPlayerId = pickFirstPlayer(assignments)
     const roundNumber = (room.current_round ?? 0) + 1
 
