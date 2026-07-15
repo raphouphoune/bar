@@ -1,9 +1,22 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Timer from '../components/Timer'
+import type { Role, WinnerTeam } from '../lib/types'
+import { ROLE_LABELS } from '../lib/types'
+import {
+  assignRoles as assignEngineRoles,
+  checkWinner as engineCheckWinner,
+  pickWordPair,
+  wordForRole,
+  pointsFor,
+  normalizeWord,
+  shuffle,
+  WORD_PACKS,
+  ROLE_COLOR,
+  WINNER_LABELS,
+  pickGage,
+} from '../lib/engine'
 
-type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe' | 'mercenaire' | 'traitre' | 'parrain'
-type WinnerTeam = 'civils' | 'undercover' | 'mr_white' | 'kamikaze' | null
 type Phase = 'setup' | 'revealing' | 'clue' | 'voting' | 'vote_result' | 'mr_white_guess' | 'manche_over'
 
 interface Player {
@@ -61,250 +74,39 @@ function formatTimer(v: number): string {
   return sec === 0 ? `${m} min` : `${m}:${sec.toString().padStart(2, '0')}`
 }
 
-/** Gages piochés pour le joueur éliminé (mode bar, optionnel). */
-const GAGES: string[] = [
-  'Cul sec !',
-  'Distribue 2 gorgées à qui tu veux.',
-  'Bois une gorgée.',
-  'Raconte ta pire soirée.',
-  'Imite un autre joueur jusqu\'au prochain vote.',
-  'Fais une déclaration d\'amour à ton voisin de gauche.',
-  'Parle avec l\'accent de ton choix jusqu\'à la fin de la manche.',
-  'Chante le refrain d\'une chanson choisie par le groupe.',
-  'Interdit de dire "oui" ou "non" jusqu\'au prochain vote.',
-  'Offre la prochaine tournée (ou un verre d\'eau, soyons sérieux).',
-]
-
-function pickGage(): string {
-  return GAGES[Math.floor(Math.random() * GAGES.length)]
+/** Rôle vivant → conditions de victoire (via le moteur partagé). */
+function winnerOf(players: Player[]): WinnerTeam {
+  return engineCheckWinner(players.filter((p) => p.isAlive).map((p) => p.role ?? 'civil'))
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-const WORD_PAIRS: [string, string][] = [
-  ['chat', 'tigre'], ['café', 'thé'], ['vélo', 'moto'], ['plage', 'désert'],
-  ['guitare', 'violon'], ['pizza', 'tarte'], ['roi', 'empereur'],
-  ['médecin', 'infirmier'], ['château', 'palais'], ['lune', 'soleil'],
-  ['requin', 'dauphin'], ['avion', 'hélicoptère'], ['livre', 'cahier'],
-  ['fantôme', 'vampire'], ['fleur', 'arbre'], ['stylo', 'crayon'],
-  ['bière', 'vin'], ['hamburger', 'sandwich'], ['chaussette', 'gant'],
-  ['montagne', 'colline'], ['rivière', 'lac'], ['hiver', 'automne'],
-  ['banane', 'mangue'], ['table', 'bureau'], ['couteau', 'fourchette'],
-  ['football', 'rugby'], ['piscine', 'mer'], ['printemps', 'été'],
-  ['corbeau', 'aigle'], ['souris', 'rat'], ['chocolat', 'caramel'],
-  ['bus', 'tramway'], ['manteau', 'veste'], ['sorcière', 'fée'],
-  ['prison', 'école'], ['chanteur', 'musicien'], ['bougie', 'lampe'],
-  ['pelouse', 'gazon'], ['brosse', 'peigne'], ['valise', 'sac'],
-  ['fraise', 'cerise'], ['orange', 'mandarine'], ['lapin', 'lièvre'],
-  ['ski', 'surf'], ['kayak', 'canoë'], ['église', 'cathédrale'],
-  ['boulanger', 'pâtissier'], ['professeur', 'instituteur'],
-  ['perroquet', 'corbeau'], ['loup', 'renard'], ['épée', 'lance'],
-  ['cinéma', 'théâtre'], ['usine', 'atelier'], ['marché', 'supermarché'],
-]
-
-const BAR_PAIRS: [string, string][] = [
-  ['bière', 'vin'], ['mojito', 'margarita'], ['whisky', 'rhum'], ['vodka', 'gin'],
-  ['pastis', 'martini'], ['champagne', 'crémant'], ['tequila', 'mezcal'],
-  ['cacahuètes', 'chips'], ['glaçon', 'paille'], ['pinte', 'chope'],
-  ['barman', 'serveur'], ['comptoir', 'terrasse'], ['tireuse', 'bouteille'],
-  ['shooter', 'cocktail'], ['gueule de bois', 'migraine'], ['apéro', 'digestif'],
-  ['cidre', 'kir'], ['limonade', 'soda'], ['café', 'thé'], ['tournée', 'addition'],
-]
-
-const POP_PAIRS: [string, string][] = [
-  ['Batman', 'Superman'], ['Mario', 'Luigi'], ['Pikachu', 'Salamèche'],
-  ['Naruto', 'Sasuke'], ['Harry Potter', 'Gandalf'], ['Dark Vador', 'Yoda'],
-  ['Iron Man', 'Captain America'], ['Sherlock', 'Poirot'], ['Zelda', 'Peach'],
-  ['Goku', 'Vegeta'], ['Simpson', 'Griffin'], ['Netflix', 'Youtube'],
-  ['TikTok', 'Instagram'], ['PlayStation', 'Xbox'], ['Marvel', 'DC'],
-  ['Star Wars', 'Star Trek'], ['Pokémon', 'Digimon'], ['Minecraft', 'Fortnite'],
-]
-
-const SOIREE_PAIRS: [string, string][] = [
-  ['crush', 'date'], ['ex', 'plan'], ['selfie', 'story'], ['dancefloor', 'bar'],
-  ['flirt', 'drague'], ['bisou', 'câlin'], ['ghosting', 'friendzone'],
-  ['after', 'apéro'], ['boîte', 'bar'], ['playlist', 'ambiance'],
-  ['smartphone', 'appli de rencontre'], ['tinder', 'instagram'],
-  ['soirée pyjama', 'boum'], ['karaoké', 'blind test'], ['gage', 'défi'],
-]
-
-interface WordPack {
-  id: string
-  label: string
-  pairs: [string, string][]
-}
-
-const WORD_PACKS: WordPack[] = [
-  { id: 'classique', label: 'Classique', pairs: WORD_PAIRS },
-  { id: 'bar', label: 'Bar 🍻', pairs: BAR_PAIRS },
-  { id: 'pop', label: 'Culture pop 🎮', pairs: POP_PAIRS },
-  { id: 'soiree', label: 'Soirée 🔥', pairs: SOIREE_PAIRS },
-]
-
-function pickWordPair(packId: string): { civil: string; undercover: string } {
-  const pack = WORD_PACKS.find((p) => p.id === packId) ?? WORD_PACKS[0]
-  const [a, b] = pack.pairs[Math.floor(Math.random() * pack.pairs.length)]
-  return Math.random() < 0.5 ? { civil: a, undercover: b } : { civil: b, undercover: a }
-}
-
-function assignRoles(
-  alive: Player[],
-  s: Settings,
-  words: { civil: string; undercover: string },
-): Player[] {
-  const shuffled = shuffle(alive)
-  const n = shuffled.length
-
-  let uc = Math.max(1, Math.min(s.undercoverCount, n - 2))
-  const mw = s.enableMrWhite && n - uc > 2 ? 1 : 0
-  const kk = s.enableKamikaze && n - uc - mw > 2 ? 1 : 0
-  while (uc + mw + kk >= n - uc && uc > 1) uc--
-
-  const roles: Role[] = []
-  for (let i = 0; i < uc; i++) roles.push('undercover')
-  for (let i = 0; i < mw; i++) roles.push('mr_white')
-  for (let i = 0; i < kk; i++) roles.push('kamikaze')
-  while (roles.length < n) roles.push('civil')
-
-  const result: Player[] = shuffled.map((p, i) => ({
-    ...p,
-    role: roles[i],
-    word:
-      roles[i] === 'undercover' ? words.undercover
-      : roles[i] === 'mr_white' ? null
-      : words.civil,
-    taupeKnows: null,
-    mercenaireTarget: null,
-  }))
-
-  // Taupe : transforme un civil en taupe (connaît un undercover)
-  if (s.enableTaupe) {
-    const civils = result.filter((p) => p.role === 'civil')
-    const undercovers = result.filter((p) => p.role === 'undercover')
-    if (civils.length >= 2 && undercovers.length >= 1) {
-      const taupe = shuffle(civils)[0]
-      const target = shuffle(undercovers)[0]
-      const idx = result.findIndex((p) => p.id === taupe.id)
-      result[idx] = { ...result[idx], role: 'taupe', word: words.civil, taupeKnows: target.id }
-    }
-  }
-
-  // Parrain : transforme un undercover en parrain (garde le mot undercover)
-  if (s.enableParrain) {
-    const undercovers = result.filter((p) => p.role === 'undercover')
-    if (undercovers.length >= 1) {
-      const parrain = shuffle(undercovers)[0]
-      const idx = result.findIndex((p) => p.id === parrain.id)
-      result[idx] = { ...result[idx], role: 'parrain' }
-    }
-  }
-
-  // Traître : transforme un civil en traître (garde le mot civil, gagne avec undercovers)
-  if (s.enableTraitre) {
-    const civils = result.filter((p) => p.role === 'civil')
-    if (civils.length >= 2) {
-      const traitre = shuffle(civils)[0]
-      const idx = result.findIndex((p) => p.id === traitre.id)
-      result[idx] = { ...result[idx], role: 'traitre' }
-    }
-  }
-
-  // Mercenaire : transforme un civil en mercenaire, lui assigne une cible aléatoire
-  if (s.enableMercenaire) {
-    const civils = result.filter((p) => p.role === 'civil')
-    if (civils.length >= 1) {
-      const mercenaire = shuffle(civils)[0]
-      const others = result.filter((p) => p.id !== mercenaire.id)
-      const target = shuffle(others)[0]
-      const idx = result.findIndex((p) => p.id === mercenaire.id)
-      result[idx] = { ...result[idx], role: 'mercenaire', mercenaireTarget: target.id }
-    }
-  }
-
-  return result
-}
-
-function checkWinner(players: Player[]): WinnerTeam {
-  const alive = players.filter((p) => p.isAlive)
-  const impostors = alive.filter((p) =>
-    ['undercover', 'mr_white', 'kamikaze', 'parrain'].includes(p.role ?? ''),
-  ).length
-  const civils = alive.length - impostors
-  if (impostors === 0) return 'civils'
-  if (impostors >= civils) return 'undercover'
-  return null
-}
-
-const POINTS: Partial<Record<Role, Partial<Record<NonNullable<WinnerTeam>, number>>>> = {
-  civil: { civils: 1 },
-  undercover: { undercover: 2 },
-  mr_white: { mr_white: 3 },
-  kamikaze: { kamikaze: 3 },
-  parrain: { undercover: 2 },
-  traitre: { undercover: 2 },
-  // taupe et mercenaire : gérés séparément dans awardPoints
-}
-
+/** Attribue les points selon le moteur (Taupe/Mercenaire ont un contexte spécial). */
 function awardPoints(players: Player[], w: NonNullable<WinnerTeam>): Player[] {
   return players.map((p) => {
-    if (p.role === 'taupe') {
-      if (w === 'undercover') {
-        const protectedAlive = players.some((u) => u.id === p.taupeKnows && u.isAlive)
-        return { ...p, score: p.score + (protectedAlive ? 2 : 0) }
-      }
-      return p
+    if (!p.role) return p
+    const ctx = {
+      protectedAlive:
+        p.role === 'taupe' ? players.some((u) => u.id === p.taupeKnows && u.isAlive) : undefined,
+      targetEliminated:
+        p.role === 'mercenaire'
+          ? players.some((u) => u.id === p.mercenaireTarget && !u.isAlive)
+          : undefined,
     }
-    if (p.role === 'mercenaire') {
-      // Gagne si sa cible a été éliminée à un moment dans la partie
-      const targetEliminated = players.some((u) => u.id === p.mercenaireTarget && !u.isAlive)
-      return { ...p, score: p.score + (targetEliminated ? 3 : 0) }
-    }
-    return { ...p, score: p.score + (p.role ? (POINTS[p.role]?.[w] ?? 0) : 0) }
+    return { ...p, score: p.score + pointsFor(p.role, w, ctx) }
   })
 }
 
 function settingsError(s: Settings, n: number): string | null {
   if (n < 3) return 'Il faut au moins 3 joueurs.'
-  const imp = s.undercoverCount + (s.enableMrWhite ? 1 : 0) + (s.enableKamikaze ? 1 : 0)
+  // Taupe et Traître jouent pour le camp undercover → comptés comme imposteurs.
+  const imp =
+    s.undercoverCount +
+    (s.enableMrWhite ? 1 : 0) +
+    (s.enableKamikaze ? 1 : 0) +
+    (s.enableTaupe ? 1 : 0) +
+    (s.enableTraitre ? 1 : 0)
   if (imp >= n) return 'Trop de rôles spéciaux pour ce nombre de joueurs.'
   if (n - imp <= imp) return 'Les civils doivent rester majoritaires.'
   return null
-}
-
-const ROLE_LABELS: Record<Role, string> = {
-  civil: 'Civil',
-  undercover: 'Undercover',
-  mr_white: 'Mr White',
-  kamikaze: 'Kamikaze',
-  taupe: 'La Taupe',
-  mercenaire: 'Le Mercenaire',
-  traitre: 'Le Traître',
-  parrain: 'Le Parrain',
-}
-
-const ROLE_COLOR: Record<Role, string> = {
-  civil: 'text-emerald-400',
-  undercover: 'text-rose-400',
-  mr_white: 'text-sky-300',
-  kamikaze: 'text-amber-400',
-  taupe: 'text-purple-400',
-  mercenaire: 'text-orange-400',
-  traitre: 'text-red-500',
-  parrain: 'text-fuchsia-400',
-}
-
-const WINNER_LABEL: Record<NonNullable<WinnerTeam>, string> = {
-  civils: 'Les Civils gagnent',
-  undercover: 'Les Undercover gagnent',
-  mr_white: 'Mr White gagne',
-  kamikaze: 'Le Kamikaze gagne',
 }
 
 type ToggleKey = 'enableMrWhite' | 'enableKamikaze' | 'enableTaupe' | 'enableMercenaire' | 'enableTraitre' | 'enableParrain'
@@ -377,7 +179,17 @@ export default function LocalGame() {
     const words = pickWordPair(settings.wordPack)
     setCivilWord(words.civil)
     setUndercoverWord(words.undercover)
-    const assigned = assignRoles(base, settings, words)
+    const byId = new Map(assignEngineRoles(base.map((p) => p.id), settings).map((a) => [a.playerId, a]))
+    const assigned: Player[] = base.map((p) => {
+      const a = byId.get(p.id)!
+      return {
+        ...p,
+        role: a.role,
+        word: wordForRole(a.role, words),
+        taupeKnows: a.role === 'taupe' ? a.knowsPlayerId : null,
+        mercenaireTarget: a.role === 'mercenaire' ? a.knowsPlayerId : null,
+      }
+    })
     setPlayers(assigned)
     const order = shuffle(assigned.filter((p) => p.isAlive)).map((p) => p.id)
     setTurnOrder(order)
@@ -412,7 +224,7 @@ export default function LocalGame() {
         return
       }
       // Plus d'undercover en vie → kamikaze éliminé sans gagner, flux normal
-      const w = checkWinner(updated)
+      const w = winnerOf(updated)
       if (w) {
         setPlayers(awardPoints(updated, w))
         setWinner(w)
@@ -429,7 +241,7 @@ export default function LocalGame() {
       return
     }
 
-    const w = checkWinner(updated)
+    const w = winnerOf(updated)
     if (w) {
       setPlayers(awardPoints(updated, w))
       setWinner(w)
@@ -454,14 +266,14 @@ export default function LocalGame() {
   }
 
   function handleMrWhiteSubmit() {
-    const correct = mrGuess.trim().toLowerCase() === civilWord.toLowerCase()
+    const correct = normalizeWord(mrGuess) === normalizeWord(civilWord)
     if (correct) {
       setPlayers(awardPoints(players, 'mr_white'))
       setWinner('mr_white')
       setPhase('manche_over')
       return
     }
-    const w = checkWinner(players)
+    const w = winnerOf(players)
     if (w) {
       setPlayers(awardPoints(players, w))
       setWinner(w)
@@ -599,7 +411,7 @@ export default function LocalGame() {
             className="mb-2 flex w-full items-center justify-between rounded-lg bg-slate-900/60 px-3 py-2 text-left"
           >
             <span>
-              <span className="block text-sm">Gages (mode bar) 🍻</span>
+              <span className="block text-sm">Gages</span>
               <span className="block text-xs text-slate-500">le joueur éliminé pioche un gage</span>
             </span>
             <span className={`h-6 w-11 rounded-full p-0.5 transition ${settings.enableGages ? 'bg-rose-500' : 'bg-slate-600'}`}>
@@ -959,7 +771,7 @@ export default function LocalGame() {
           ) : (
             <p className="text-lg">Égalité — personne n'est éliminé.</p>
           )}
-          {winner && <p className="mt-3 text-xl font-bold">{WINNER_LABEL[winner]}</p>}
+          {winner && <p className="mt-3 text-xl font-bold">{WINNER_LABELS[winner]}</p>}
           {!winner && elim?.role !== 'mr_white' && (
             <p className="mt-2 text-sm text-slate-400">La partie continue.</p>
           )}
@@ -1030,7 +842,6 @@ export default function LocalGame() {
       <div className="mx-auto flex min-h-full max-w-md flex-col gap-5 p-4">
         {nightWinners.length > 0 && (
           <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
-            <p className="text-4xl">🏆</p>
             <p className="mt-1 text-xl font-black text-amber-300">
               {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
             </p>
@@ -1038,7 +849,7 @@ export default function LocalGame() {
           </div>
         )}
         <div className={`${card} text-center`}>
-          <p className="text-2xl font-black">{winner ? WINNER_LABEL[winner] : 'Fin de manche'}</p>
+          <p className="text-2xl font-black">{winner ? WINNER_LABELS[winner] : 'Fin de manche'}</p>
           <div className="mt-3 flex justify-center gap-6 text-sm">
             <span>
               Civils : <b className="text-emerald-400">{civilWord}</b>

@@ -8,6 +8,7 @@
 // =========================================================================
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { getCtx, requireHost } from '../_shared/auth.ts'
+import { orderAlive, type Role } from '../_shared/roles.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -21,12 +22,45 @@ Deno.serve(async (req) => {
     const host = await requireHost(ctx.admin, roomId, ctx.uid)
     if ('error' in host) return json({ error: host.error }, host.status)
 
+    const now = new Date().toISOString()
+
     if (phase === 'clue') {
-      // nouveau tour de discussion : on efface les votes et les indices
+      // Nouveau tour de discussion : on efface les votes et les indices...
       await ctx.admin.from('votes').delete().eq('round_id', roundId)
       await ctx.admin.from('clues').delete().eq('round_id', roundId)
+
+      // ...et on recalcule l'ordre de parole parmi les joueurs ENCORE vivants
+      // (sinon un joueur éliminé garderait sa place / le badge "commence").
+      const { data: alivePlayers } = await ctx.admin
+        .from('players')
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('is_alive', true)
+      const { data: roleRows } = await ctx.admin
+        .from('round_roles')
+        .select('player_id, role')
+        .eq('round_id', roundId)
+      const roleOf = new Map<string, Role>(
+        (roleRows ?? []).map((r) => [r.player_id, r.role as Role]),
+      )
+      const alive = (alivePlayers ?? []).map((p) => ({ id: p.id, role: roleOf.get(p.id) ?? 'civil' }))
+
+      if (alive.length > 0) {
+        const { order, firstPlayerId } = orderAlive(alive)
+        // Remet tout le monde à null (les morts sortent de l'ordre), puis réordonne les vivants.
+        await ctx.admin.from('players').update({ turn_order: null }).eq('room_id', roomId)
+        for (let i = 0; i < order.length; i++) {
+          await ctx.admin.from('players').update({ turn_order: i }).eq('id', order[i])
+        }
+        await ctx.admin
+          .from('rounds')
+          .update({ phase, first_player_id: firstPlayerId, phase_started_at: now })
+          .eq('id', roundId)
+        return json({ ok: true })
+      }
     }
-    await ctx.admin.from('rounds').update({ phase }).eq('id', roundId)
+
+    await ctx.admin.from('rounds').update({ phase, phase_started_at: now }).eq('id', roundId)
 
     return json({ ok: true })
   } catch (e) {

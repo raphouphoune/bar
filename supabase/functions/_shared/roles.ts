@@ -1,4 +1,6 @@
 // Attribution des rôles, côté serveur (autoritaire et secret).
+// ⚠️ COPIE MIROIR de la logique de src/lib/engine.ts (assignRoles / orderAlive).
+//    Deno ne peut pas importer depuis src/ : garder les deux synchronisés.
 
 export type Role = 'civil' | 'undercover' | 'mr_white' | 'kamikaze' | 'taupe' | 'mercenaire' | 'traitre' | 'parrain'
 
@@ -18,7 +20,7 @@ export interface Assignment {
   knowsPlayerId?: string // taupe → id undercover connu ; mercenaire → id de la cible
 }
 
-function shuffle<T>(arr: T[]): T[] {
+export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -97,10 +99,27 @@ export function assignRoles(
   return { assignments }
 }
 
-/** Premier joueur : tiré au sort parmi ceux qui ont un mot (jamais Mr White / Kamikaze). */
+/**
+ * Premier joueur : tiré au sort parmi ceux qui ont un mot.
+ * Seul Mr White est exclu (il n'a pas de mot) ; tous les autres rôles
+ * (civil, undercover, kamikaze, taupe, mercenaire, traître, parrain) sont éligibles.
+ */
 export function pickFirstPlayer(assignments: Assignment[]): string {
-  const eligible = assignments.filter(
-    (a) => a.role === 'civil' || a.role === 'undercover' || a.role === 'taupe',
-  )
-  return shuffle(eligible)[0].playerId
+  const eligible = assignments.filter((a) => a.role !== 'mr_white')
+  const pool = eligible.length > 0 ? eligible : assignments
+  return shuffle(pool)[0].playerId
+}
+
+/**
+ * Recalcule l'ordre de parole parmi les joueurs VIVANTS (après une élimination).
+ * Renvoie l'ordre complet + le premier joueur (jamais Mr White s'il reste un autre choix).
+ */
+export function orderAlive(
+  alive: { id: string; role: Role }[],
+): { order: string[]; firstPlayerId: string } {
+  const shuffled = shuffle(alive)
+  const eligible = shuffled.filter((a) => a.role !== 'mr_white')
+  const first = (eligible[0] ?? shuffled[0]).id
+  const order = [first, ...shuffled.map((a) => a.id).filter((id) => id !== first)]
+  return { order, firstPlayerId: first }
 }

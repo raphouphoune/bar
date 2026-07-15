@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.mrwhite-guess]
 verify_jwt = true
+
+[functions.leave-room]
+verify_jwt = true

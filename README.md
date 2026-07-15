@@ -1,13 +1,22 @@
-# Undercover — Bar Edition 🍻
+# Undercover — Bar Edition
 
-Une version maison du jeu **Undercover** où les mots à deviner sont **tirés en
-direct** (via l'API ConceptNet, en français) pour que **personne — même l'hôte —
-ne connaisse la liste**. Chacun joue sur son téléphone.
+Une version maison du jeu **Undercover**. Deux façons de jouer :
+
+- **Un seul téléphone** (mode *Meneur*) : le téléphone tourne de joueur en
+  joueur, aucune connexion requise. Thèmes de mots + gages (mode bar).
+- **Chacun son téléphone** (mode *multi*) : chacun rejoint avec un code. Les
+  mots peuvent être **tirés en direct** (ConceptNet, en français) pour que
+  **personne — même l'hôte — ne connaisse la liste**, ou choisis dans un thème.
 
 - **Rôles** : Civil · Undercover · Mr White · **Kamikaze** (gagne s'il se fait
-  éliminer) · **La Taupe** (civil qui connaît un undercover et doit le protéger).
+  éliminer *tant qu'un undercover est encore en vie*) · **La Taupe** (civil qui
+  connaît un undercover et doit le protéger) · **Le Mercenaire** (neutre : gagne
+  si sa cible secrète est éliminée) · **Le Traître** (civil qui gagne avec les
+  undercovers sans les connaître) · **Le Parrain** (undercover révélé comme
+  « Civil » à son élimination).
 - **Temps réel** : tous les téléphones se synchronisent (lobby, votes, révélations).
-- **Anti-triche** : chaque joueur ne voit que **son** mot (Row Level Security).
+- **Anti-triche** : chaque joueur ne voit que **son** mot (Row Level Security) ;
+  votes et transitions validés côté serveur (Edge Functions).
 - **100 % gratuit** : front sur Vercel, backend sur Supabase.
 
 ## Pile technique
@@ -33,7 +42,8 @@ npm run dev
 
 ### 1. Projet Supabase
 1. Crée un projet sur [supabase.com](https://supabase.com) (plan gratuit).
-2. **SQL Editor** → colle le contenu de `supabase/migrations/0001_init.sql` → **Run**.
+2. **SQL Editor** → exécute **dans l'ordre** le contenu de :
+   `supabase/migrations/0001_init.sql`, puis `0002_clues.sql`, puis `0003_settings_timer_gages.sql`.
 3. **Authentication → Sign In / Providers → Anonymous** : active les connexions anonymes.
 4. Note dans **Project Settings → API** : l'`URL` et la clé `anon public`.
 
@@ -46,6 +56,7 @@ supabase functions deploy start-round
 supabase functions deploy set-phase
 supabase functions deploy resolve-vote
 supabase functions deploy mrwhite-guess
+supabase functions deploy leave-room
 ```
 > Les variables `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY`
 > sont **injectées automatiquement** dans les Edge Functions — rien à configurer.
@@ -66,7 +77,7 @@ supabase functions deploy mrwhite-guess
 4. À tour de rôle (à l'oral), chacun donne **un indice** sur son mot.
 5. Tout le monde **vote** pour éliminer un joueur.
 6. Révélation, puis :
-   - **Kamikaze** éliminé → il gagne 😈
+   - **Kamikaze** éliminé (tant qu'un undercover est en vie) → il gagne
    - **Mr White** éliminé → il tente de **deviner** le mot des civils
    - sinon on vérifie les conditions de victoire, et on continue.
 7. Les **civils** gagnent quand tous les imposteurs sont éliminés ; les
@@ -76,12 +87,12 @@ supabase functions deploy mrwhite-guess
 
 ```
 src/
-  pages/        Home (accueil), Room (orchestrateur)
-  components/   Lobby, Game (toutes les phases de jeu)
+  pages/        Home (accueil), Room (orchestrateur multi), LocalGame (mode 1 tel.), Roles (guide)
+  components/   Lobby, Game (toutes les phases de jeu), Timer
   hooks/        useRoom (état + temps réel)
   lib/          supabase, api, types, game (logique d'affichage)
 supabase/
-  migrations/   schéma SQL + RLS
-  functions/    start-round, set-phase, resolve-vote, mrwhite-guess
-    _shared/    roles, words (ConceptNet), outcome, auth, cors
+  migrations/   schéma SQL + RLS (0001 → 0003)
+  functions/    start-round, set-phase, resolve-vote, mrwhite-guess, leave-room
+    _shared/    roles, words (ConceptNet + packs), outcome, gages, auth, cors
 ```

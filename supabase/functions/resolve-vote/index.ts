@@ -8,6 +8,7 @@
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { getCtx, requireHost } from '../_shared/auth.ts'
 import { checkWinner, finishRound } from '../_shared/outcome.ts'
+import { pickGage } from '../_shared/gages.ts'
 import type { Role } from '../_shared/roles.ts'
 
 Deno.serve(async (req) => {
@@ -21,6 +22,7 @@ Deno.serve(async (req) => {
     const host = await requireHost(ctx.admin, roomId, ctx.uid)
     if ('error' in host) return json({ error: host.error }, host.status)
     const { admin } = ctx
+    const enableGages = !!(host.room.settings as { enableGages?: boolean })?.enableGages
 
     const { data: round } = await admin.from('rounds').select('*').eq('id', roundId).single()
     if (!round || round.phase !== 'voting') return json({ error: 'pas en phase de vote' }, 400)
@@ -36,13 +38,17 @@ Deno.serve(async (req) => {
       .eq('round_id', roundId)
     const roleOf = new Map<string, Role>((roleRows ?? []).map((r) => [r.player_id, r.role as Role]))
 
-    // Dépouillement
+    // Dépouillement — on ne compte QUE les votes valides côté serveur :
+    // votant vivant ET cible vivante (la RLS n'empêche pas un client trafiqué
+    // de voter en étant mort, ou de viser un joueur déjà éliminé).
+    const aliveSet = new Set((players ?? []).filter((p) => p.is_alive).map((p) => p.id))
     const { data: votes } = await admin
       .from('votes')
-      .select('target_player_id')
+      .select('voter_player_id, target_player_id')
       .eq('round_id', roundId)
     const tally = new Map<string, number>()
     for (const v of votes ?? []) {
+      if (!aliveSet.has(v.voter_player_id) || !aliveSet.has(v.target_player_id)) continue
       tally.set(v.target_player_id, (tally.get(v.target_player_id) ?? 0) + 1)
     }
     let max = 0
@@ -56,7 +62,7 @@ Deno.serve(async (req) => {
     if (leaders.length !== 1 || max === 0) {
       await admin
         .from('rounds')
-        .update({ phase: 'reveal', eliminated_player_id: null })
+        .update({ phase: 'reveal', eliminated_player_id: null, eliminated_gage: null })
         .eq('id', roundId)
       return json({ ok: true, tie: true })
     }
@@ -71,6 +77,7 @@ Deno.serve(async (req) => {
         eliminated_player_id: eliminatedId,
         // Le Parrain est révélé comme "civil" pour tromper les joueurs
         eliminated_role: eliminatedRole === 'parrain' ? 'civil' : eliminatedRole,
+        eliminated_gage: enableGages ? pickGage() : null,
       })
       .eq('id', roundId)
 

@@ -99,7 +99,7 @@ export default function Home() {
         <h1 className="text-4xl font-black tracking-tight">
           Under<span className="text-rose-400">cover</span>
         </h1>
-        <p className="mt-1 text-sm text-slate-400">Bar Edition 🍻 — mots tirés en direct</p>
+        <p className="mt-1 text-sm text-slate-400">Bar Edition</p>
       </header>
 
       <div className="flex flex-col gap-4 rounded-2xl bg-slate-800/60 p-5 ring-1 ring-white/10">

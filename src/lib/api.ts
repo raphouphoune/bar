@@ -1,5 +1,6 @@
 import { supabase, ensureAuth } from './supabase'
 import type { Room, RoomSettings } from './types'
+import { DEFAULT_SETTINGS } from './types'
 
 function randomCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // sans I/O/0/1 ambigus
@@ -16,7 +17,7 @@ export async function createRoom(name: string): Promise<string> {
     const code = randomCode()
     const { data: room, error } = await supabase
       .from('rooms')
-      .insert({ code, host_id: uid })
+      .insert({ code, host_id: uid, settings: DEFAULT_SETTINGS })
       .select()
       .single()
     if (error) {
@@ -77,8 +78,17 @@ export async function castVote(roundId: string, voterPlayerId: string, targetPla
   if (error) throw error
 }
 
+/**
+ * Quitte la partie. Passe par l'Edge Function pour réattribuer l'hôte si
+ * besoin (la RLS interdit à un client de transférer host_id à un autre joueur).
+ */
 export async function leaveRoom(playerId: string) {
-  await supabase.from('players').delete().eq('id', playerId)
+  try {
+    await invoke('leave-room', { playerId })
+  } catch {
+    // Filet de sécurité si la fonction n'est pas déployée : on se retire au moins.
+    await supabase.from('players').delete().eq('id', playerId)
+  }
 }
 
 /** Appelle une Edge Function avec le JWT courant. */

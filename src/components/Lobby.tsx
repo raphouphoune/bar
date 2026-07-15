@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RoomState } from '../hooks/useRoom'
 import type { RoomSettings } from '../lib/types'
+import { ONLINE_WORD_PACKS } from '../lib/types'
 import { updateSettings, startRound, leaveRoom } from '../lib/api'
 import { settingsValid, impostorCount, suggestedSettings } from '../lib/game'
 
@@ -104,6 +105,28 @@ export default function Lobby({ state }: { state: RoomState }) {
         <Toggle label="Le Parrain" hint="undercover révélé comme Civil à l'élimination" checked={s.enableParrain} disabled={!isHost} onChange={(v) => patch({ enableParrain: v })} />
         <div className="my-2 h-px bg-white/10" />
         <Toggle label="Mode à distance" hint="les joueurs tapent leurs indices dans l'app (jeu en ligne)" checked={s.remoteMode ?? false} disabled={!isHost} onChange={(v) => patch({ remoteMode: v })} />
+        <Toggle label="Gages" hint="le joueur éliminé pioche un gage" checked={s.enableGages ?? false} disabled={!isHost} onChange={(v) => patch({ enableGages: v })} />
+        <div className="my-2 h-px bg-white/10" />
+        <p className="mb-2 text-sm">Thème des mots</p>
+        <div className="mb-1 grid grid-cols-2 gap-2">
+          {ONLINE_WORD_PACKS.map((pack) => (
+            <button
+              key={pack.id}
+              disabled={!isHost}
+              onClick={() => patch({ wordPack: pack.id })}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ring-1 transition active:scale-[0.98] disabled:opacity-60 ${
+                (s.wordPack ?? 'conceptnet') === pack.id
+                  ? 'bg-rose-500/30 ring-rose-400'
+                  : 'bg-slate-900/60 ring-white/10'
+              }`}
+            >
+              {pack.label}
+            </button>
+          ))}
+        </div>
+        <p className="mb-2 text-xs text-slate-500">
+          « Mystère » génère les mots automatiquement : personne, même l'hôte, ne les connaît à l'avance.
+        </p>
         <div className="my-2 h-px bg-white/10" />
         <Stepper
           label="Score cible (soirée)"

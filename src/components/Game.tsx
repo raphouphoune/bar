@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { RoomState } from '../hooks/useRoom'
 import type { RevealedRole, Role } from '../lib/types'
 import { ROLE_LABELS } from '../lib/types'
-import { ROLE_COLOR } from '../lib/game'
+import { ROLE_COLOR, WINNER_LABELS } from '../lib/engine'
 import { supabase } from '../lib/supabase'
 import { setPhase, resolveVote, submitGuess, castVote, startRound, submitClue } from '../lib/api'
 import Timer from './Timer'
@@ -111,7 +111,7 @@ function VerbalCluePhase({ state }: { state: RoomState }) {
     .sort((a, b) => (a.turn_order ?? 0) - (b.turn_order ?? 0))
   return (
     <div className="flex flex-col gap-4">
-      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.round_number} />
+      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.id} startedAt={round.phase_started_at} />
       <div className="rounded-2xl bg-slate-800/60 p-4 ring-1 ring-white/10">
         <h3 className="mb-2 text-sm font-bold text-slate-300">Ordre de parole (à l'oral)</h3>
         <ol className="flex flex-col gap-1">
@@ -164,7 +164,7 @@ function RemoteCluePhase({ state }: { state: RoomState }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.round_number} />
+      <Timer seconds={room.settings?.timerSeconds ?? 0} resetKey={round.id} startedAt={round.phase_started_at} />
       <div className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-4 py-3 ring-1 ring-white/10">
         <span className="text-sm font-bold text-slate-300">Mode à distance</span>
         <span className="text-sm text-slate-400">{submittedCount}/{alive.length} indices</span>
@@ -346,6 +346,14 @@ function RevealPhase({ state }: { state: RoomState }) {
         )}
         <p className="mt-2 text-sm text-slate-400">La partie continue.</p>
       </div>
+      {eliminated && round.eliminated_gage && (
+        <div className="rounded-2xl bg-amber-500/15 p-4 text-center ring-1 ring-amber-400/40">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+            Gage pour {nameOf(eliminated)}
+          </p>
+          <p className="mt-1 text-lg font-semibold text-amber-100">{round.eliminated_gage}</p>
+        </div>
+      )}
       {me.is_host && (
         <HostButton onClick={() => setPhase(room!.id, round!.id, 'clue')}>
           Tour suivant
@@ -405,13 +413,6 @@ function MrWhiteGuess({ state }: { state: RoomState }) {
 }
 
 // ---- Résultats / fin de manche ------------------------------------------
-const WINNER_LABEL: Record<string, string> = {
-  civils: 'Les Civils gagnent',
-  undercover: 'Les Undercover gagnent',
-  mr_white: 'Mr White gagne',
-  kamikaze: 'Le Kamikaze gagne',
-}
-
 function Results({ state }: { state: RoomState }) {
   const { round, room, me, players } = state
   const [roles, setRoles] = useState<RevealedRole[]>([])
@@ -444,7 +445,6 @@ function Results({ state }: { state: RoomState }) {
     <div className="flex flex-col gap-4">
       {nightWinners.length > 0 && (
         <div className="rounded-2xl bg-amber-500/15 p-5 text-center ring-1 ring-amber-400/40">
-          <p className="text-4xl">🏆</p>
           <p className="mt-1 text-xl font-black text-amber-300">
             {nightWinners.map((p) => p.name).join(' & ')} {nightWinners.length > 1 ? 'remportent' : 'remporte'} la soirée !
           </p>
@@ -452,7 +452,7 @@ function Results({ state }: { state: RoomState }) {
         </div>
       )}
       <div className="rounded-2xl bg-slate-800/80 p-5 text-center ring-1 ring-white/10">
-        <p className="text-2xl font-black">{WINNER_LABEL[round!.winner_team ?? ''] ?? 'Fin de manche'}</p>
+        <p className="text-2xl font-black">{(round!.winner_team && WINNER_LABELS[round!.winner_team]) ?? 'Fin de manche'}</p>
         <div className="mt-3 flex justify-center gap-6 text-sm">
           <span>Civils : <b className="text-emerald-400">{round!.revealed_civil_word}</b></span>
           <span>Undercover : <b className="text-rose-400">{round!.revealed_undercover_word}</b></span>

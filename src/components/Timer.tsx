@@ -24,18 +24,31 @@ function beep() {
 
 /**
  * Minuteur de discussion (indicatif : n'avance pas la partie tout seul).
- * Se relance à zéro quand `resetKey` change ou quand le composant est remonté.
+ * - `startedAt` (ISO) : début de phase côté serveur → synchronise tous les
+ *   téléphones et survit à un rafraîchissement (mode multi).
+ * - Sans `startedAt` : décompte basé sur le montage (mode local, 1 téléphone).
+ * Se relance quand `resetKey`, `startedAt` ou `seconds` changent.
  */
-export default function Timer({ seconds, resetKey }: { seconds: number; resetKey?: string | number }) {
-  const [left, setLeft] = useState(seconds)
+export default function Timer({
+  seconds,
+  resetKey,
+  startedAt,
+}: {
+  seconds: number
+  resetKey?: string | number
+  startedAt?: string | null
+}) {
+  const startMs = startedAt ? Date.parse(startedAt) : null
+  const initial =
+    startMs != null ? Math.max(0, seconds - Math.floor((Date.now() - startMs) / 1000)) : seconds
+  const [left, setLeft] = useState(initial)
   const firedRef = useRef(false)
 
   useEffect(() => {
-    setLeft(seconds)
     firedRef.current = false
     if (seconds <= 0) return
-    const start = Date.now()
-    const id = setInterval(() => {
+    const start = startMs ?? Date.now()
+    const tick = () => {
       const elapsed = Math.floor((Date.now() - start) / 1000)
       const remaining = Math.max(0, seconds - elapsed)
       setLeft(remaining)
@@ -45,9 +58,11 @@ export default function Timer({ seconds, resetKey }: { seconds: number; resetKey
         navigator.vibrate?.([200, 100, 200])
         clearInterval(id)
       }
-    }, 250)
+    }
+    tick()
+    const id = setInterval(tick, 250)
     return () => clearInterval(id)
-  }, [seconds, resetKey])
+  }, [seconds, resetKey, startedAt])
 
   if (seconds <= 0) return null
 
@@ -61,7 +76,7 @@ export default function Timer({ seconds, resetKey }: { seconds: number; resetKey
     <div className={`rounded-2xl p-3 ring-1 ${done ? 'bg-rose-500/20 ring-rose-400/40' : 'bg-slate-800/60 ring-white/10'}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm text-slate-300">
-          {done ? '⏰ Temps écoulé — au vote !' : 'Temps de discussion'}
+          {done ? 'Temps écoulé — au vote !' : 'Temps de discussion'}
         </span>
         <span
           className={`font-mono text-lg font-black tabular-nums ${done ? 'text-rose-300' : urgent ? 'text-amber-300' : 'text-white'}`}

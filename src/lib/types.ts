@@ -25,6 +25,10 @@ export interface RoomSettings {
   targetScore: number
   /** Durée du minuteur de discussion en secondes. 0 = pas de minuteur. */
   timerSeconds: number
+  /** Thème des mots. 'conceptnet' = tirage en direct ; sinon pack statique. */
+  wordPack: string
+  /** Gages (mode bar) : le joueur éliminé pioche un gage. */
+  enableGages: boolean
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -38,7 +42,18 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   remoteMode: false,
   targetScore: 0,
   timerSeconds: 0,
+  wordPack: 'conceptnet',
+  enableGages: false,
 }
+
+/** Packs de mots proposés en mode multi-téléphones. */
+export const ONLINE_WORD_PACKS: { id: string; label: string }[] = [
+  { id: 'conceptnet', label: 'Mystère' },
+  { id: 'classique', label: 'Classique' },
+  { id: 'bar', label: 'Bar' },
+  { id: 'pop', label: 'Culture pop' },
+  { id: 'soiree', label: 'Soirée' },
+]
 
 export interface Clue {
   id: string
@@ -81,6 +96,10 @@ export interface Round {
   winner_team: WinnerTeam
   revealed_civil_word: string | null
   revealed_undercover_word: string | null
+  /** Horodatage de début de la phase courante (minuteur synchronisé). */
+  phase_started_at: string | null
+  /** Gage tiré pour le joueur éliminé (mode bar). */
+  eliminated_gage: string | null
   created_at: string
 }
 

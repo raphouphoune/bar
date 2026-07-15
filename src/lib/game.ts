@@ -1,11 +1,21 @@
-import type { Player, RoomSettings, Role } from './types'
+import type { Player, RoomSettings } from './types'
 
-/** Nombre total d'imposteurs (undercover + mr white + kamikaze) selon les réglages. */
+// Ré-export depuis le moteur canonique (compat. imports existants).
+export { ROLE_COLOR } from './engine'
+
+/**
+ * Nombre de joueurs qui NE sont PAS de simples civils, pour vérifier l'équilibre.
+ * On compte les undercovers, Mr White, Kamikaze, ainsi que la Taupe et le Traître
+ * (qui jouent pour le camp undercover). Le Parrain remplace un undercover (déjà
+ * compté) et le Mercenaire est neutre (compté comme un civil à l'affichage).
+ */
 export function impostorCount(s: RoomSettings): number {
   return (
     s.undercoverCount +
     (s.enableMrWhite ? 1 : 0) +
-    (s.enableKamikaze ? 1 : 0)
+    (s.enableKamikaze ? 1 : 0) +
+    (s.enableTaupe ? 1 : 0) +
+    (s.enableTraitre ? 1 : 0)
   )
 }
 
@@ -30,16 +40,4 @@ export function suggestedSettings(playerCount: number): Partial<RoomSettings> {
 
 export function alivePlayers(players: Player[]): Player[] {
   return players.filter((p) => p.is_alive)
-}
-
-/** Couleur d'accent par rôle (pour les écrans de révélation). */
-export const ROLE_COLOR: Record<Role, string> = {
-  civil: 'text-emerald-400',
-  undercover: 'text-rose-400',
-  mr_white: 'text-sky-300',
-  kamikaze: 'text-amber-400',
-  taupe: 'text-purple-400',
-  mercenaire: 'text-orange-400',
-  traitre: 'text-red-500',
-  parrain: 'text-fuchsia-400',
 }

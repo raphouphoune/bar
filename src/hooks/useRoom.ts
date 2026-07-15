@@ -113,21 +113,28 @@ export function useRoom(code: string): RoomState {
   }, [refresh])
 
   // Abonnement realtime : tout changement déclenche un refresh.
+  // votes / clues / round_roles n'ont pas de room_id → on les filtre par la
+  // manche courante (sinon on écouterait TOUTES les parties du serveur).
+  const roundId = round?.id
   useEffect(() => {
     if (!room) return
-    const channel = supabase
-      .channel(`room:${room.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${room.id}` }, () => refreshRef.current())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${room.id}` }, () => refreshRef.current())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds', filter: `room_id=eq.${room.id}` }, () => refreshRef.current())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => refreshRef.current())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'round_roles' }, () => refreshRef.current())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clues' }, () => refreshRef.current())
-      .subscribe()
+    const cb = () => refreshRef.current()
+    let channel = supabase
+      .channel(`room:${room.id}:${roundId ?? 'lobby'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${room.id}` }, cb)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${room.id}` }, cb)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds', filter: `room_id=eq.${room.id}` }, cb)
+    if (roundId) {
+      channel = channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `round_id=eq.${roundId}` }, cb)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'round_roles', filter: `round_id=eq.${roundId}` }, cb)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clues', filter: `round_id=eq.${roundId}` }, cb)
+    }
+    channel.subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [room?.id])
+  }, [room?.id, roundId])
 
   const me = players.find((p) => p.user_id === uid) ?? null
 

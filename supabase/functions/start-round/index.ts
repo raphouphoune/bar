@@ -9,7 +9,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { assignRoles, pickFirstPlayer, type Settings } from '../_shared/roles.ts'
-import { generateWordPair } from '../_shared/words.ts'
+import { getWordPair } from '../_shared/words.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Il faut au moins 3 joueurs' }, 400)
     }
 
-    const settings = room.settings as Settings
+    const settings = room.settings as Settings & { wordPack?: string }
     const playerIds = players.map((p) => p.id)
 
     // 3. Réinitialise tout le monde "vivant", remet l'ordre à plat
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     // 4. Rôles + mots
     const { assignments } = assignRoles(playerIds, settings)
-    const { civil, undercover } = await generateWordPair()
+    const { civil, undercover } = await getWordPair(settings.wordPack)
     const firstPlayerId = pickFirstPlayer(assignments)
     const roundNumber = (room.current_round ?? 0) + 1
 
@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
         round_number: roundNumber,
         phase: 'clue',
         first_player_id: firstPlayerId,
+        phase_started_at: new Date().toISOString(),
       })
       .select()
       .single()

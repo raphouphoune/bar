@@ -1,3 +1,5 @@
+// ⚠️ Les packs statiques (PACKS) sont une COPIE MIROIR de WORD_PACKS dans
+//    src/lib/engine.ts. Garder les deux listes synchronisées.
 // =========================================================================
 //  Génération de la paire de mots (Civil / Undercover) via ConceptNet.
 //  Gratuit, sans clé, supporte le français. Endpoint : /related/c/fr/<mot>
@@ -93,12 +95,77 @@ export async function generateWordPair(): Promise<WordPair> {
 
     if (candidates.length > 0) {
       const chosen = pick(candidates)
-      return { civil: anchor, undercover: chosen.term }
+      // On randomise quel mot est "civil" : sinon le civil serait toujours une
+      // ancre connue, ce qui donnerait un indice à qui mémorise la liste.
+      return coinFlip(anchor, chosen.term)
     }
   } catch (_e) {
     // on bascule sur le fallback
   }
   const [a, b] = pick(FALLBACK_PAIRS)
-  // on randomise quel mot est "civil" pour plus d'imprévisibilité
+  return coinFlip(a, b)
+}
+
+function coinFlip(a: string, b: string): WordPair {
   return Math.random() < 0.5 ? { civil: a, undercover: b } : { civil: b, undercover: a }
+}
+
+// =========================================================================
+//  Packs de mots statiques (identiques au mode local). Le pack 'conceptnet'
+//  (défaut) tire les mots en direct ; les autres piochent dans une liste.
+//  ⚠️ Garder ces listes synchronisées avec src/pages/LocalGame.tsx
+// =========================================================================
+const PACKS: Record<string, [string, string][]> = {
+  classique: [
+    ['chat', 'tigre'], ['café', 'thé'], ['vélo', 'moto'], ['plage', 'désert'],
+    ['guitare', 'violon'], ['pizza', 'tarte'], ['roi', 'empereur'],
+    ['médecin', 'infirmier'], ['château', 'palais'], ['lune', 'soleil'],
+    ['requin', 'dauphin'], ['avion', 'hélicoptère'], ['livre', 'cahier'],
+    ['fantôme', 'vampire'], ['fleur', 'arbre'], ['stylo', 'crayon'],
+    ['bière', 'vin'], ['hamburger', 'sandwich'], ['chaussette', 'gant'],
+    ['montagne', 'colline'], ['rivière', 'lac'], ['hiver', 'automne'],
+    ['banane', 'mangue'], ['table', 'bureau'], ['couteau', 'fourchette'],
+    ['football', 'rugby'], ['piscine', 'mer'], ['printemps', 'été'],
+    ['corbeau', 'aigle'], ['souris', 'rat'], ['chocolat', 'caramel'],
+    ['bus', 'tramway'], ['manteau', 'veste'], ['sorcière', 'fée'],
+    ['prison', 'école'], ['chanteur', 'musicien'], ['bougie', 'lampe'],
+    ['pelouse', 'gazon'], ['brosse', 'peigne'], ['valise', 'sac'],
+    ['fraise', 'cerise'], ['orange', 'mandarine'], ['lapin', 'lièvre'],
+    ['ski', 'surf'], ['kayak', 'canoë'], ['église', 'cathédrale'],
+    ['boulanger', 'pâtissier'], ['professeur', 'instituteur'],
+    ['perroquet', 'corbeau'], ['loup', 'renard'], ['épée', 'lance'],
+    ['cinéma', 'théâtre'], ['usine', 'atelier'], ['marché', 'supermarché'],
+  ],
+  bar: [
+    ['bière', 'vin'], ['mojito', 'margarita'], ['whisky', 'rhum'], ['vodka', 'gin'],
+    ['pastis', 'martini'], ['champagne', 'crémant'], ['tequila', 'mezcal'],
+    ['cacahuètes', 'chips'], ['glaçon', 'paille'], ['pinte', 'chope'],
+    ['barman', 'serveur'], ['comptoir', 'terrasse'], ['tireuse', 'bouteille'],
+    ['shooter', 'cocktail'], ['gueule de bois', 'migraine'], ['apéro', 'digestif'],
+    ['cidre', 'kir'], ['limonade', 'soda'], ['café', 'thé'], ['tournée', 'addition'],
+  ],
+  pop: [
+    ['Batman', 'Superman'], ['Mario', 'Luigi'], ['Pikachu', 'Salamèche'],
+    ['Naruto', 'Sasuke'], ['Harry Potter', 'Gandalf'], ['Dark Vador', 'Yoda'],
+    ['Iron Man', 'Captain America'], ['Sherlock', 'Poirot'], ['Zelda', 'Peach'],
+    ['Goku', 'Vegeta'], ['Simpson', 'Griffin'], ['Netflix', 'Youtube'],
+    ['TikTok', 'Instagram'], ['PlayStation', 'Xbox'], ['Marvel', 'DC'],
+    ['Star Wars', 'Star Trek'], ['Pokémon', 'Digimon'], ['Minecraft', 'Fortnite'],
+  ],
+  soiree: [
+    ['crush', 'date'], ['ex', 'plan'], ['selfie', 'story'], ['dancefloor', 'bar'],
+    ['flirt', 'drague'], ['bisou', 'câlin'], ['ghosting', 'friendzone'],
+    ['after', 'apéro'], ['boîte', 'bar'], ['playlist', 'ambiance'],
+    ['smartphone', 'appli de rencontre'], ['tinder', 'instagram'],
+    ['soirée pyjama', 'boum'], ['karaoké', 'blind test'], ['gage', 'défi'],
+  ],
+}
+
+/** Tire une paire selon le pack choisi ('conceptnet' = tirage en direct). */
+export async function getWordPair(packId?: string): Promise<WordPair> {
+  if (!packId || packId === 'conceptnet') return generateWordPair()
+  const pack = PACKS[packId]
+  if (!pack || pack.length === 0) return generateWordPair()
+  const [a, b] = pick(pack)
+  return coinFlip(a, b)
 }

@@ -15,7 +15,15 @@ create table if not exists public.rooms (
                     "undercoverCount": 1,
                     "enableMrWhite": true,
                     "enableKamikaze": false,
-                    "enableTaupe": false
+                    "enableTaupe": false,
+                    "enableMercenaire": false,
+                    "enableTraitre": false,
+                    "enableParrain": false,
+                    "remoteMode": false,
+                    "targetScore": 0,
+                    "timerSeconds": 0,
+                    "wordPack": "conceptnet",
+                    "enableGages": false
                   }'::jsonb,
   created_at    timestamptz not null default now()
 );
@@ -63,9 +71,9 @@ create table if not exists public.round_roles (
   id               uuid primary key default gen_random_uuid(),
   round_id         uuid not null references public.rounds(id) on delete cascade,
   player_id        uuid not null references public.players(id) on delete cascade,
-  role             text not null,                    -- civil|undercover|mr_white|kamikaze|taupe
-  word             text,                             -- mot du joueur (null pour mr_white/kamikaze)
-  knows_player_id  uuid references public.players(id),-- pour la Taupe : l'undercover qu'elle connaît
+  role             text not null,                    -- civil|undercover|mr_white|kamikaze|taupe|mercenaire|traitre|parrain
+  word             text,                             -- mot du joueur (null pour mr_white uniquement)
+  knows_player_id  uuid references public.players(id),-- Taupe : l'undercover connu · Mercenaire : la cible
   unique (round_id, player_id)
 );
 

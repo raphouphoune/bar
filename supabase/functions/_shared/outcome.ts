@@ -1,9 +1,12 @@
+// ⚠️ checkWinner / points : COPIE MIROIR de src/lib/engine.ts. Garder synchronisé.
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import type { Role } from './roles.ts'
 
 export type WinnerTeam = 'civils' | 'undercover' | 'mr_white' | 'kamikaze'
 
-const IMPOSTOR: Role[] = ['undercover', 'mr_white', 'kamikaze', 'parrain']
+// Le Kamikaze est un rôle SOLO : il ne compte pas dans la parité undercover.
+// (Sa victoire est gérée séparément dans resolve-vote.)
+const IMPOSTOR: Role[] = ['undercover', 'mr_white', 'parrain']
 
 /** Vérifie les conditions de victoire à partir des rôles ENCORE vivants. */
 export function checkWinner(aliveRoles: Role[]): WinnerTeam | null {
